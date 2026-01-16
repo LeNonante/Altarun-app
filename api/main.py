@@ -2,6 +2,7 @@ from flask import Flask, request
 import os
 from database.extensions import db
 from database.models import User  # Importer les modèles pour qu'ils soient enregistrés
+from werkzeug.security import generate_password_hash, check_password_hash
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 app = Flask(__name__)
@@ -24,7 +25,7 @@ def get_users():
         data = request.get_json()
         new_user = User(
             username=data['username'],
-            password_hash=data['password_hash']
+            password_hash=generate_password_hash(data['password_hash'])
         )
         db.session.add(new_user)
         db.session.commit()
@@ -32,6 +33,14 @@ def get_users():
     
     users = User.query.all()
     return {'users': [user.username for user in users]}
+
+@app.route('/auth', methods=['POST'])
+def authenticate():
+    data = request.get_json()
+    user = User.query.filter_by(username=data['username']).first()
+    if user and check_password_hash(user.password_hash, data['password_hash']):
+        return {'message': 'Authentication successful'}, 200
+    return {'message': 'Invalid credentials'}, 401
 
 
     
