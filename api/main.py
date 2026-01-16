@@ -1,7 +1,7 @@
 from flask import Flask, request
 import os
 from database.extensions import db
-from database.models import User  # Importer les modèles pour qu'ils soient enregistrés
+from database.models import User, Club, Team  # Importer les modèles pour qu'ils soient enregistrés
 from werkzeug.security import generate_password_hash, check_password_hash
 
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -42,8 +42,35 @@ def authenticate():
         return {'message': 'Authentication successful'}, 200
     return {'message': 'Invalid credentials'}, 401
 
-
+@app.route('/clubs', methods=['GET', 'POST'])
+def manage_clubs():
+    if request.method == 'POST':
+        data = request.get_json()
+        new_club = Club(
+            name=data['name'],
+            admin_id=data['admin_id']
+        )
+        db.session.add(new_club)
+        db.session.commit()
+        return {'message': 'Club created successfully'}, 201
     
+    clubs = Club.query.all()
+    return {'clubs': [club.name for club in clubs]}
+
+@app.route('/teams', methods=['GET', 'POST'])
+def manage_teams():
+    if request.method == 'POST':
+        data = request.get_json()
+        new_team = Team(
+            name=data['name'],
+            club_id=data['club_id']
+        )
+        db.session.add(new_team)
+        db.session.commit()
+        return {'message': 'Team created successfully'}, 201
+    
+    teams = Team.query.all()
+    return {'teams': [team.name for team in teams]}
 
 
 if __name__ == '__main__':
