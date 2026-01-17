@@ -63,7 +63,11 @@ def get_user(username):
         user.first_name = data.get('first_name', user.first_name)
         user.last_name = data.get('last_name', user.last_name)
         user.email = data.get('email', user.email)
-        db.session.commit()
+        try :
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            return {'error': 'Email already in use'}, 400
         return {'message': 'User updated successfully'}, 200
     return {
         'id': user.id,
@@ -107,6 +111,22 @@ def upload_user_photo(username):
     db.session.commit()
     
     return {'message': 'Photo updated successfully'}, 200
+
+@app.route('/users/<username>/password', methods=['PUT'])
+def update_user_password(username):
+    user = User.query.filter_by(username=username).first()
+    
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    data = request.get_json()
+    new_password = data.get('new_password')
+    if not new_password:
+        return jsonify({'error': 'New password is required'}), 400
+
+    user.password_hash = generate_password_hash(new_password)
+    db.session.commit()
+    return {'message': 'Password updated successfully'}, 200
 
 @app.route('/auth', methods=['POST'])
 def authenticate():

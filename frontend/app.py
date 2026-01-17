@@ -54,12 +54,27 @@ def settings():
             first_name = request.form.get("first_name")
             last_name = request.form.get("last_name")
             email = request.form.get("email")
-            if update_profile_info(current_user.id, first_name, last_name, email):
+            result = update_profile_info(current_user.id, first_name, last_name, email)
+            if result:
                 context["first_name"] = first_name
                 context["last_name"] = last_name
                 context["email"] = email
+                context["message"] = "Profil mis à jour avec succès."
             else:
-                context["error"] = "Failed to update profile information."
+                context["error"] = "Échec de la mise à jour du profil. L'adresse e-mail est peut-être déjà utilisée."
+        if request.form.get("action") == "update_password":
+            current_password = request.form.get("current_password")
+            new_password = request.form.get("new_password")
+            confirm_password = request.form.get("confirm_password")
+            if new_password != confirm_password:
+                context["error_password"] = "Le nouveau mot de passe et la confirmation ne correspondent pas."
+            elif not check_password(current_user.id, current_password):
+                context["error_password"] = "Le mot de passe actuel est incorrect."
+            else:
+                if update_password(current_user.id, current_password, new_password):
+                    context["message_password"] = "Mot de passe mis à jour avec succès."
+                else:
+                    context["error_password"] = "Échec de la mise à jour du mot de passe."
     return render_template('settings.html', **context)
 
 

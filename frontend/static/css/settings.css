@@ -394,6 +394,61 @@ input:checked + .slider:before {
     margin-top: 8px;
 }
 
+/* Messages d'erreur et de succès */
+.error-message {
+    background: rgba(255, 77, 79, 0.15);
+    border: 1px solid rgba(255, 77, 79, 0.4);
+    border-left: 4px solid #ff4d4f;
+    color: #ff7875;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: slideIn 0.3s ease;
+}
+
+.error-message::before {
+    content: "⚠";
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.success-message {
+    background: rgba(82, 196, 26, 0.15);
+    border: 1px solid rgba(82, 196, 26, 0.4);
+    border-left: 4px solid #52c41a;
+    color: #73d13d;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: slideIn 0.3s ease;
+}
+
+.success-message::before {
+    content: "✓";
+    font-size: 18px;
+    flex-shrink: 0;
+    font-weight: bold;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 /* Action Buttons */
 .action-buttons {
     display: flex;

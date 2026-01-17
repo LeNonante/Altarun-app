@@ -50,3 +50,20 @@ def update_profile_picture(username, file_storage):
         return r.status_code == 200
     except Exception:
         return False
+
+def update_password(username, current_password, new_password):
+    # Authentifier l'utilisateur avec le mot de passe actuel
+    auth_response = requests.post(f"{BASE_URL}/auth", json={"username": username, "password": current_password})
+    if auth_response.status_code != 200:
+        return False  # Mot de passe actuel incorrect
+
+    # Mettre à jour le mot de passe
+    r = requests.put(f"{BASE_URL}/users/{username}/password", json={"new_password": new_password})
+    return r.status_code == 200
+
+def check_email_availability(email):
+    r = requests.get(f"{BASE_URL}/users/check_email", params={"email": email})
+    if r.status_code == 200:
+        data = r.json()
+        return data.get("available", False)
+    return False
