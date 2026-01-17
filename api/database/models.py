@@ -3,14 +3,14 @@ from datetime import datetime
 
 # Table pour lier les membres aux clubs
 club_membership = db.Table('club_membership',
-    db.Column('user_id', db.Integer, db.ForeignKey('user.id'), primary_key=True),
+    db.Column('user_id', db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), primary_key=True),
     db.Column('club_id', db.Integer, db.ForeignKey('club.id'), primary_key=True),
     db.Column('joined_at', db.DateTime, default=datetime.utcnow)
 )
 
 # Table pour lier les membres aux équipes
 team_membership = db.Table('team_membership',
-    db.Column('user_id', db.Integer, db.ForeignKey('user.id'), primary_key=True),
+    db.Column('user_id', db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), primary_key=True),
     db.Column('team_id', db.Integer, db.ForeignKey('team.id'), primary_key=True),
     db.Column('joined_at', db.DateTime, default=datetime.utcnow)
 )
