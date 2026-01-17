@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Altarun - Paramètres</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="Altarun Logo" class="sidebar-logo">
+                <h1>Altarun</h1>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="{{ url_for('clubs') }}" class="nav-item active">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="14" width="7" height="7"></rect>
+                        <rect x="3" y="14" width="7" height="7"></rect>
+                    </svg>
+                    <span>Dashboard</span>
+                </a>
+
+                <a href="{{ url_for('clubs') }}" class="nav-item">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    <span>Espace Club</span>
+                </a>
+
+                <a href="{{ url_for('coach') }}" class="nav-item">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                    <span>Mon coach 1A</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <a href="{{ url_for('settings') }}" style ="text-decoration: none; color: inherit;">
+                <div class="user-profile">
+                        <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="User Avatar" class="user-avatar">
+                        <span class="user-name">Alex Runner</span>
+                </div>
+                </a>
+                <a href="{{ url_for('logout') }}" class="logout-btn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                    <span>Déconnexion</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="content-wrapper">
+                <h1 class="page-title">Profil & Paramètres</h1>
+
+                <!-- Profile Section -->
+                <div class="settings-card">
+                    <div class="profile-header">
+                        <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="Profile Picture" class="profile-picture">
+                        <div class="profile-info">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="first-name">FIRST NAME</label>
+                                    <input type="text" id="first-name" name="first_name" value="John" placeholder="John">
+                                </div>
+                                <div class="form-group">
+                                    <label for="last-name">LAST NAME</label>
+                                    <input type="text" id="last-name" name="last_name" value="Doe" placeholder="Doe">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="email">EMAIL ADDRESS</label>
+                                <input type="email" id="email" name="email" value="john.doe@example.com" placeholder="john.doe@example.com">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Two Cards Row -->
+                <div class="cards-row">
+                    <!-- Two-Factor Auth Card -->
+                    <div class="settings-card half-card">
+                        <div class="card-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b35" stroke-width="2">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                            </svg>
+                            <h3>Two-Factor Auth</h3>
+                        </div>
+                        <p class="card-description">Add an extra layer of security to your account. We'll ask for a code whenever you sign in from a new device.</p>
+                        
+                        <div class="toggle-container">
+                            <div class="toggle-info">
+                                <span class="toggle-label">2FA Protection</span>
+                                <span class="toggle-status disabled">Currently Disabled</span>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="2fa-toggle">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Update Password Card -->
+                    <div class="settings-card half-card">
+                        <div class="card-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b35" stroke-width="2">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                            </svg>
+                            <h3>Update Password</h3>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="current-password">CURRENT PASSWORD</label>
+                            <input type="password" id="current-password" name="current_password" placeholder="••••••••">
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="new-password">NEW PASSWORD</label>
+                                <input type="password" id="new-password" name="new_password" placeholder="••••••••">
+                            </div>
+                            <div class="form-group">
+                                <label for="confirm-password">CONFIRM NEW PASSWORD</label>
+                                <input type="password" id="confirm-password" name="confirm_password" placeholder="••••••••">
+                            </div>
+                        </div>
+                        <p class="password-hint">Password must be at least 12 characters and include a symbol.</p>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="action-buttons">
+                    <button type="button" class="btn-discard">Discard</button>
+                    <button type="submit" class="btn-save">Save Changes</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Toggle 2FA
+        const toggle = document.getElementById('2fa-toggle');
+        const statusText = document.querySelector('.toggle-status');
+        
+        toggle.addEventListener('change', function() {
+            if (this.checked) {
+                statusText.textContent = 'Currently Enabled';
+                statusText.classList.remove('disabled');
+                statusText.classList.add('enabled');
+            } else {
+                statusText.textContent = 'Currently Disabled';
+                statusText.classList.remove('enabled');
+                statusText.classList.add('disabled');
+            }
+        });
+    </script>
+</body>
+</html>

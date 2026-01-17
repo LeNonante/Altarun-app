@@ -33,6 +33,14 @@ def load_user(user_id):
     return User(user_id)
 
 
+@app.route('/settings')
+@login_required
+def settings():
+    context = {}
+    context["version"] = app.config["APP_VERSION"]
+    return render_template('settings.html', **context)
+
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
@@ -60,6 +68,15 @@ def login():
 def index():
     return f"Bonjour, {current_user.id}! Vous êtes connecté."
 
+@app.route('/clubs')
+@login_required
+def clubs():
+    return f"Voici la liste des clubs pour {current_user.id}."
+
+@app.route('/coach')
+@login_required
+def coach():
+    return f"Bienvenue dans l'espace coach, {current_user.id}."
 
 @app.route('/logout')
 @login_required
