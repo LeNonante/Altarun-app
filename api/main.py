@@ -1,19 +1,20 @@
-from flask import Flask, request
+from flask import Flask, request, jsonify
 import os
 from database.extensions import db
-from database.models import User  # Importer les modèles pour qu'ils soient enregistrés
+from database.models import User
+from werkzeug.security import check_password_hash, generate_password_hash
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 app = Flask(__name__)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'instance', 'Altarun-api.db') # Le fichier sera créé dansu n dossier instance/
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False # Pour économiser de la mémoire
+# Configuration
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'instance', 'Altarun-api.db')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['JWT_SECRET_KEY'] = 'change-ce-secret-en-prod' # Clé pour signer les tokens
 
 db.init_app(app)
 
-# Création des tables
 with app.app_context():
-    # S'assure que le dossier instance existe
     if not os.path.exists(os.path.join(basedir, 'instance')):
         os.makedirs(os.path.join(basedir, 'instance'))
     db.create_all()
@@ -24,7 +25,7 @@ def get_users():
         data = request.get_json()
         new_user = User(
             username=data['username'],
-            password_hash=data['password_hash']
+            password_hash=generate_password_hash(data['password_hash'])
         )
         db.session.add(new_user)
         db.session.commit()
@@ -34,7 +35,16 @@ def get_users():
     return {'users': [user.username for user in users]}
 
 
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    user = User.query.filter_by(username=data.get('username')).first()
+
+    # On vérifie manuellement ici
+    if user and check_password_hash(user.password_hash, data.get('password')):
+        return {'message': 'Login successful'}, 200
     
+    return {'error': 'Invalid credentials'}, 401
 
 
 if __name__ == '__main__':
