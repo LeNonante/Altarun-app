@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 import os
 from database.extensions import db
-from database.models import User
+from database.models import User, Club, Team
 from werkzeug.security import check_password_hash, generate_password_hash
 
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -46,6 +46,119 @@ def login():
     
     return {'error': 'Invalid credentials'}, 401
 
+# --- ROUTES CLUBS ---
+
+@app.route('/clubs', methods=['GET', 'POST'])
+def handle_clubs():
+    if request.method == 'POST':
+        data = request.get_json()
+        user_id = data.get('user_id')
+        
+        user = User.query.get(user_id)
+        if not user: return {'error': 'User not found'}, 404
+
+        new_club = Club(name=data['name'], admin_id=user_id)
+        # L'admin rejoint automatiquement son club
+        new_club.members.append(user)
+        
+        db.session.add(new_club)
+        db.session.commit()
+        return {'message': f'Club {new_club.name} créé'}, 201
+
+    # GET : Récupérer tous les clubs
+    clubs = Club.query.all()
+    return jsonify([{
+        'id': c.id, 'name': c.name, 'admin': c.admin.username, 'members_count': c.members.count()
+    } for c in clubs])
+
+# --- ROUTE JOIN (Rejoindre un club) ---
+
+@app.route('/clubs/<int:club_id>/join', methods=['POST'])
+def join_club(club_id):
+    data = request.get_json()
+    user_id = data.get('user_id') # Qui veut rejoindre ?
+    
+    club = Club.query.get_or_404(club_id)
+    user = User.query.get(user_id)
+    
+    if not user: return {'error': 'User not found'}, 404
+    if club in user.clubs: return {'error': 'Déjà membre'}, 400
+
+    user.clubs.append(club)
+    db.session.commit()
+    return {'message': f'{user.username} a rejoint {club.name}'}
+
+# --- ROUTES TEAMS ---
+
+@app.route('/clubs/<int:club_id>/teams', methods=['GET', 'POST'])
+def handle_teams(club_id):
+    club = Club.query.get_or_404(club_id)
+
+    if request.method == 'POST':
+        data = request.get_json()
+        # Seul l'admin du club (vérifié via user_id du JSON) peut créer
+        if club.admin_id != data.get('user_id'):
+            return {'error': 'Action réservée à l\'admin'}, 403
+        
+        new_team = Team(name=data['name'], club_id=club_id)
+        db.session.add(new_team)
+        db.session.commit()
+        return {'message': 'Team créée'}, 201
+
+    # GET : Récupérer les teams du club
+    return jsonify([{'id': t.id, 'name': t.name} for t in club.teams])
+
+# --- ROUTE MEMBRES DU CLUB AVEC LEUR TEAM ---
+
+@app.route('/clubs/<int:club_id>/members', methods=['GET'])
+def get_club_members(club_id):
+    club = Club.query.get_or_404(club_id)
+    results = []
+
+    for member in club.members:
+        # On cherche la team du membre dans CE club précis
+        user_team = next((t.name for t in member.teams if t.club_id == club_id), "Aucune")
+        results.append({
+            'username': member.username,
+            'team': user_team
+        })
+    return jsonify(results)
+
+@app.route('/clubs/<int:club_id>/teams/<int:team_id>/add-member', methods=['POST'])
+def add_member_to_team(club_id, team_id):
+    data = request.get_json()
+    user_id = data.get('user_id')
+    admin_id = data.get('admin_id') # Optionnel : si tu veux vérifier que c'est l'admin qui fait l'action
+
+    # Récupération des objets ou erreur 404 si l'ID n'existe pas
+    user = User.query.get_or_404(user_id)
+    club = Club.query.get_or_404(club_id)
+    team = Team.query.get_or_404(team_id)
+
+    # 1. VERIFICATION : Est-ce que l'utilisateur est membre du club ?
+    # On utilise "club.members" car c'est le backref défini dans ton modèle
+    if user not in club.members:
+        return {
+            'error': 'Forbidden',
+            'message': f'L utilisateur {user.username} doit d abord rejoindre le club {club.name} avant d integrer une equipe.'
+        }, 403
+
+    # 2. VERIFICATION : Est-ce qu'il est déjà dans une autre équipe de CE club ?
+    # (Ta règle : un membre appartient à une seule team par club)
+    already_in_a_team = any(t.club_id == club_id for t in user.teams)
+    if already_in_a_team:
+        return {
+            'error': 'Conflict',
+            'message': 'Cet utilisateur est deja affecte a une autre equipe dans ce club.'
+        }, 409
+
+    # 3. AJOUT A L'EQUIPE
+    if user not in team.members:
+        team.members.append(user)
+        db.session.commit()
+        return {'message': f'{user.username} a ete ajoute avec succes a l equipe {team.name}'}, 200
+    
+    return {'message': 'L utilisateur est deja dans cette equipe.'}, 200
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)
