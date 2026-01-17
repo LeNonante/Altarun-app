@@ -27,4 +27,17 @@ def get_git_version():
 def check_password(username, password):
     r = requests.post(f"{BASE_URL}/auth", json={"username": username, "password": password})
     return r.status_code == 200
-    
+
+def get_profile_info(username):
+    r = requests.get(f"{BASE_URL}/users/{username}")
+    if r.status_code == 200:
+        return r.json()
+    return None
+
+def update_profile_info(username, first_name, last_name, email):
+    r = requests.put(f"{BASE_URL}/users/{username}", json={
+        "first_name": first_name,
+        "last_name": last_name,
+        "email": email
+    })
+    return r.status_code == 200

@@ -19,6 +19,8 @@ team_membership = db.Table('team_membership',
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
+    first_name = db.Column(db.String(80))
+    last_name = db.Column(db.String(80))
     password_hash = db.Column(db.String(200), nullable=False)
     is_2fa_enabled = db.Column(db.Boolean, default=False)
     two_fa_secret = db.Column(db.String(100))
@@ -26,6 +28,7 @@ class User(db.Model):
     strava_client_id = db.Column(db.String(100))
     strava_client_secret = db.Column(db.String(100))
     strava_refresh_token = db.Column(db.String(200))
+    email = db.Column(db.String(120), unique=True, nullable=False)
     
     # Relations d'administration
     managed_clubs = db.relationship('Club', backref='admin', lazy=True)

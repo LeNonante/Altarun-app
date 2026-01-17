@@ -1,4 +1,4 @@
-from flask import Flask, request, session, redirect, url_for, render_template
+from flask import Flask, request, session, redirect, url_for, render_template, Response
 import os
 from services.config import *
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
@@ -33,11 +33,28 @@ def load_user(user_id):
     return User(user_id)
 
 
-@app.route('/settings')
+@app.route('/settings', methods=['GET', 'POST'])
 @login_required
 def settings():
     context = {}
     context["version"] = app.config["APP_VERSION"]
+    infos = get_profile_info(current_user.id)
+    if infos:
+        context["first_name"] = infos.get("first_name", "")
+        context["last_name"] = infos.get("last_name", "")
+        context["email"] = infos.get("email", "")
+        context["username"] = infos.get("username", "")
+    if request.method == "POST":
+        if request.form.get("action") == "update_settings":
+            first_name = request.form.get("first_name")
+            last_name = request.form.get("last_name")
+            email = request.form.get("email")
+            if update_profile_info(current_user.id, first_name, last_name, email):
+                context["first_name"] = first_name
+                context["last_name"] = last_name
+                context["email"] = email
+            else:
+                context["error"] = "Failed to update profile information."
     return render_template('settings.html', **context)
 
 
@@ -86,8 +103,29 @@ def logout():
     response = redirect(url_for('login'))
     return response
 
-print(check_password("alice","alice123"))
-print(check_password("bob","wrongpassword"))
+@app.route('/profile-picture/<username>')
+@login_required
+def profile_picture(username):
+    # Le frontend demande l'image à l'API
+    api_url = f"{BASE_URL}/users/{username}/photo"
+    
+    try:
+        # On récupère l'image depuis l'API (stream=True est important pour la mémoire)
+        resp = requests.get(api_url, stream=True)
+        
+        if resp.status_code == 200:
+            # On renvoie l'image au navigateur exactement comme on l'a reçue
+            return Response(
+                resp.iter_content(chunk_size=1024), 
+                content_type=resp.headers['Content-Type']
+            )
+        else:
+            # Si pas d'image, redirection vers l'avatar par défaut statique du front
+            return redirect(url_for('static', filename='images/logo.svg'))
+            
+    except Exception:
+        return redirect(url_for('static', filename='images/logo.svg'))
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=False)

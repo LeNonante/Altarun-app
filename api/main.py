@@ -1,4 +1,5 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
+import io
 import os
 from database.extensions import db
 from database.models import User, Club, Team  # Importer les modèles pour qu'ils soient enregistrés
@@ -38,7 +39,8 @@ def get_users():
         new_user = User(
             username=data['username'],
             password_hash=generate_password_hash(data['password']),
-            photo=photo
+            photo=photo,
+            email=data['email']
         )
         db.session.add(new_user)
         db.session.commit()
@@ -46,6 +48,46 @@ def get_users():
     
     users = User.query.all()
     return {'users': [user.username for user in users]}
+
+@app.route('/users/<username>', methods=['GET', 'PUT', 'DELETE'])
+def get_user(username):
+    user = User.query.filter_by(username=username).first()
+    if not user:
+        return {'error': 'User not found'}, 404
+    if request.method == 'DELETE':
+        db.session.delete(user)
+        db.session.commit()
+        return {'message': 'User deleted successfully'}, 200
+    if request.method == 'PUT':
+        data = request.get_json()
+        user.first_name = data.get('first_name', user.first_name)
+        user.last_name = data.get('last_name', user.last_name)
+        user.email = data.get('email', user.email)
+        db.session.commit()
+        return {'message': 'User updated successfully'}, 200
+    return {
+        'id': user.id,
+        'username': user.username,
+        'first_name': user.first_name,
+        'last_name': user.last_name,
+        'email': user.email
+    }
+
+@app.route('/users/<username>/photo', methods=['GET'])
+def get_user_photo(username):
+    user = User.query.filter_by(username=username).first()
+    
+    if not user or not user.photo:
+        return jsonify({'error': 'Photo not found'}), 404
+
+    # Convertir le binaire en fichier lisible par Flask
+    return send_file(
+        io.BytesIO(user.photo),
+        mimetype='image/png', # Ou image/jpeg selon ce que vous stockez
+        as_attachment=False,
+        download_name=f'{username}.png'
+    )
+
 
 @app.route('/auth', methods=['POST'])
 def authenticate():

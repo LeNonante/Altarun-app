@@ -104,12 +104,12 @@ body::before {
 }
 
 .user-avatar {
-    width: 32px;
-    height: 32px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     object-fit: cover;
     background: rgba(255, 107, 53, 0.2);
-    padding: 4px;
+    padding: 2px;
 }
 
 .user-name {
@@ -180,8 +180,7 @@ body::before {
     height: 120px;
     border-radius: 50%;
     object-fit: cover;
-    background: linear-gradient(135deg, #ff6b35, #ff8c42);
-    padding: 8px;
+    padding: 2px;
     flex-shrink: 0;
 }
 
