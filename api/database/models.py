@@ -4,14 +4,14 @@ from datetime import datetime
 # Table pour lier les membres aux clubs
 club_membership = db.Table('club_membership',
     db.Column('user_id', db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), primary_key=True),
-    db.Column('club_id', db.Integer, db.ForeignKey('club.id'), primary_key=True),
+    db.Column('club_id', db.Integer, db.ForeignKey('club.id', ondelete='CASCADE'), primary_key=True),
     db.Column('joined_at', db.DateTime, default=datetime.utcnow)
 )
 
 # Table pour lier les membres aux équipes
 team_membership = db.Table('team_membership',
     db.Column('user_id', db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), primary_key=True),
-    db.Column('team_id', db.Integer, db.ForeignKey('team.id'), primary_key=True),
+    db.Column('team_id', db.Integer, db.ForeignKey('team.id', ondelete='CASCADE'), primary_key=True),
     db.Column('joined_at', db.DateTime, default=datetime.utcnow)
 )
 
@@ -38,20 +38,28 @@ class Club(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(100), nullable=False, unique=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    photo= db.Column(db.LargeBinary)
     
     # L'admin (créateur) du club
     admin_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
     # Relation One-to-Many vers les équipes
-    teams = db.relationship('Team', backref='club', lazy=True)
+    teams = db.relationship(
+        'Team',
+        backref=db.backref('club', passive_deletes=True),
+        lazy=True,
+        cascade='all, delete-orphan',
+        passive_deletes=True
+    )
 
 
 class Team(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(100), nullable=False)
-    
+    color = db.Column(db.String(50))
+    photo= db.Column(db.LargeBinary)
     # L'ID du club parent
-    club_id = db.Column(db.Integer, db.ForeignKey('club.id'), nullable=False)
+    club_id = db.Column(db.Integer, db.ForeignKey('club.id', ondelete='CASCADE'), nullable=False)
     
     # Contrainte d'unicité : un club ne peut pas avoir deux équipes avec le même nom
     __table_args__ = (db.UniqueConstraint('name', 'club_id', name='unique_team_name_per_club'),)
