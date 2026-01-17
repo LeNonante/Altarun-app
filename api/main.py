@@ -3,6 +3,7 @@ import os
 from database.extensions import db
 from database.models import User, Club, Team  # Importer les modèles pour qu'ils soient enregistrés
 from werkzeug.security import generate_password_hash, check_password_hash
+import random
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 app = Flask(__name__)
@@ -23,9 +24,21 @@ with app.app_context():
 def get_users():
     if request.method == 'POST':
         data = request.get_json()
+        photo=data.get('photo')
+        if not photo:
+            avatar_dir = os.path.join(basedir, 'static', 'avatars')
+            if os.path.exists(avatar_dir):
+                avatars = os.listdir(avatar_dir)
+                if avatars:
+                    photo = os.path.join('avatars', random.choice(avatars))
+            if photo:
+                with open(os.path.join(basedir, 'static', photo), 'rb') as f:
+                    photo = f.read()
+
         new_user = User(
             username=data['username'],
-            password_hash=generate_password_hash(data['password'])
+            password_hash=generate_password_hash(data['password']),
+            photo=photo
         )
         db.session.add(new_user)
         db.session.commit()

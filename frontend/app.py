@@ -39,6 +39,7 @@ def login():
         return redirect(url_for('index'))
     context = {}
     context["version"] = app.config["APP_VERSION"]
+    
     if request.method == "POST":
         if request.form.get("action") == "login":
             username = request.form.get("username")
