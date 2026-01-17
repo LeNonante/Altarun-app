@@ -87,7 +87,26 @@ def get_user_photo(username):
         as_attachment=False,
         download_name=f'{username}.png'
     )
+    
+@app.route('/users/<username>/photo', methods=['POST'])
+def upload_user_photo(username):
+    user = User.query.filter_by(username=username).first()
+    if not user:
+        return {'error': 'User not found'}, 404
+    
+    if 'photo' not in request.files:
+        return {'error': 'No file part'}, 400
+        
+    file = request.files['photo']
+    
+    if file.filename == '':
+        return {'error': 'No selected file'}, 400
 
+    # On lit le fichier binaire et on l'enregistre
+    user.photo = file.read()
+    db.session.commit()
+    
+    return {'message': 'Photo updated successfully'}, 200
 
 @app.route('/auth', methods=['POST'])
 def authenticate():

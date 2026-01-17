@@ -67,11 +67,23 @@
         <main class="main-content">
             <div class="content-wrapper">
                 <h1 class="page-title">Profil & Paramètres</h1>
-                <form method="POST" action="{{ url_for('settings') }}">
+                <form method="POST" action="{{ url_for('settings') }}" enctype="multipart/form-data">
                 <!-- Profile Section -->
                 <div class="settings-card">
                     <div class="profile-header">
-                        <img src="{{ url_for('profile_picture', username=current_user.id) }}" alt="Profile Picture" class="profile-picture">
+                        <div class="profile-picture-upload">
+                            <img src="{{ url_for('profile_picture', username=current_user.id) }}" alt="Profile Picture" class="profile-picture" id="preview-image">
+                            <label for="profile_picture" class="upload-overlay">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="17 8 12 3 7 8"></polyline>
+                                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                                </svg>
+                                <span>Changer la photo</span>
+                            </label>
+                            <input type="file" name="profile_picture" id="profile_picture" accept="image/*" style="display: none;">
+                        </div>
+
                         <div class="profile-info">
                             <div class="form-row">
                                 <div class="form-group">
@@ -174,6 +186,21 @@
                 statusText.textContent = 'Actuellement désactivée';
                 statusText.classList.remove('enabled');
                 statusText.classList.add('disabled');
+            }
+        });
+
+        // Profile picture preview
+        const fileInput = document.getElementById('profile_picture');
+        const previewImage = document.getElementById('preview-image');
+
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    previewImage.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
             }
         });
     </script>

@@ -46,6 +46,11 @@ def settings():
         context["username"] = infos.get("username", "")
     if request.method == "POST":
         if request.form.get("action") == "update_settings":
+            if 'profile_picture' in request.files:
+                file = request.files['profile_picture']
+                if file.filename != '':
+                    update_profile_picture(current_user.id, file)
+                    
             first_name = request.form.get("first_name")
             last_name = request.form.get("last_name")
             email = request.form.get("email")

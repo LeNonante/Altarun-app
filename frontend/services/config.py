@@ -41,3 +41,12 @@ def update_profile_info(username, first_name, last_name, email):
         "email": email
     })
     return r.status_code == 200
+
+def update_profile_picture(username, file_storage):
+    # On prépare le fichier pour l'envoi via requests
+    files = {'photo': (file_storage.filename, file_storage.stream, file_storage.mimetype)}
+    try:
+        r = requests.post(f"{BASE_URL}/users/{username}/photo", files=files)
+        return r.status_code == 200
+    except Exception:
+        return False
