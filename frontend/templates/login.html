@@ -53,6 +53,8 @@
                     </div>
                 </div>
 
+                <input type="hidden" name="action" value="login">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <button type="submit" class="submit-btn">
                     Se connecter
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -60,6 +62,10 @@
                     </svg>
                 </button>
             </form>
+
+            {% if erreur %}
+                <div class="error-message">{{ erreur }}</div>
+            {% endif %}
 
             <div class="signup-section">
                 <p>Nouveau sur la plateforme ? <a href="{{ url_for('login') }}">Rejoignez votre équipe</a></p>

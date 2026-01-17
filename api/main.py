@@ -25,7 +25,7 @@ def get_users():
         data = request.get_json()
         new_user = User(
             username=data['username'],
-            password_hash=generate_password_hash(data['password_hash'])
+            password_hash=generate_password_hash(data['password'])
         )
         db.session.add(new_user)
         db.session.commit()
@@ -38,7 +38,7 @@ def get_users():
 def authenticate():
     data = request.get_json()
     user = User.query.filter_by(username=data['username']).first()
-    if user and check_password_hash(user.password_hash, data['password_hash']):
+    if user and check_password_hash(user.password_hash, data['password']):
         return {'message': 'Authentication successful'}, 200
     return {'message': 'Invalid credentials'}, 401
 
