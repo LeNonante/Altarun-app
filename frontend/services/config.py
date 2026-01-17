@@ -67,3 +67,12 @@ def check_email_availability(email):
         data = r.json()
         return data.get("available", False)
     return False
+
+def list_clubs():
+    try:
+        r = requests.get(f"{BASE_URL}/clubs")
+        if r.status_code == 200:
+            return r.json()
+    except Exception:
+        pass
+    return []

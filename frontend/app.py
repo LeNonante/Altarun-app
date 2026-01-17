@@ -108,7 +108,16 @@ def index():
 @app.route('/clubs')
 @login_required
 def clubs():
-    return f"Voici la liste des clubs pour {current_user.id}."
+    context = {"version": app.config["APP_VERSION"]}
+    clubs = list_clubs()
+    # Statistiques simples
+    context["clubs"] = clubs
+    context["total_clubs"] = len(clubs)
+    context["active_members"] = sum(c.get("members_count", 0) for c in clubs)
+    # Placeholder pour distance et rang global
+    context["avg_distance"] = 0
+    context["global_rank"] = 14
+    return render_template('clubs.html', **context)
 
 @app.route('/coach')
 @login_required

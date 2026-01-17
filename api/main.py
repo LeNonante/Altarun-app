@@ -146,8 +146,12 @@ def handle_clubs():
         
         user = User.query.get(user_id)
         if not user: return {'error': 'User not found'}, 404
-
-        new_club = Club(name=data['name'], admin_id=user_id)
+        
+        code=random.choices('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=6) # Génération d'un code unique
+        while Club.query.filter_by(code=''.join(code)).first() is not None: # Vérification de l'unicité
+            code=random.choices('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=6)
+        
+        new_club = Club(name=data['name'], admin_id=user_id, code=''.join(code))
         # L'admin rejoint automatiquement son club
         new_club.members.append(user)
         
@@ -158,7 +162,7 @@ def handle_clubs():
     # GET : Récupérer tous les clubs
     clubs = Club.query.all()
     return jsonify([{
-        'id': c.id, 'name': c.name, 'admin': c.admin.username, 'members_count': c.members.count()
+        'id': c.id, 'name': c.name, 'admin': c.admin.username, 'members_count': c.members.count(), 'code': c.code
     } for c in clubs])
 
 # --- ROUTE JOIN (Rejoindre un club) ---
