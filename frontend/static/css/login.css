@@ -24,7 +24,7 @@ body::before {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.3);
+    background: rgba(0, 0, 0, 0.5);
     z-index: 1;
 }
 
@@ -49,17 +49,20 @@ body::before {
     display: flex;
     align-items: center;
     gap: 12px;
+    width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
     margin-bottom: 32px;
 }
 
 .logo img {
-    width: 32px;
-    height: 32px;
+    width: 46px;
+    height: 46px;
 }
 
 .logo h1 {
     color: #ffffff;
-    font-size: 24px;
+    font-size: 36px;
     font-weight: 600;
 }
 
