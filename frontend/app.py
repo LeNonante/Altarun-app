@@ -116,17 +116,28 @@ def clubs():
     context["active_members"] = sum(c.get("members_count", 0) for c in clubs)
     
     if request.method=="POST":
-        if request.form.get("action") == "join_club": # Rejoindre un club via code
+        action = request.form.get("action")
+        if action == "join_club": # Rejoindre un club via code
             club_code = request.form.get("club_code")
             
             r= join_club(current_user.id, club_code)
-
+            context["clubs"] = get_profile_info(current_user.id).get("clubs", [])
             if r == 200:
                 context["message"] = "Vous avez rejoint le club avec succès."
             elif r == 400:
                 context["error"] = f"Échec pour rejoindre le club : vous êtes déjà membre de ce club."
             else:
                 context["error"] = f"Échec pour rejoindre le club : code invalide."
+                
+        elif action == "create_club":
+            club_name = request.form.get("club_name")
+            if create_club(current_user.id, club_name):
+                context["message"] = f"Le club '{club_name}' a été créé avec succès."
+                # On recharge la liste des clubs
+                context["clubs"] = get_profile_info(current_user.id).get("clubs", [])
+            else:
+                context["error"] = "Erreur lors de la création du club (le nom est peut-être déjà pris)."
+                
     return render_template('clubs.html', **context)
 
 @app.route('/coach')

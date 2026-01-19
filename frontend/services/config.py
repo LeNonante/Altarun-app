@@ -93,3 +93,19 @@ def join_club(username, club_code):
     
     r = requests.post(f"{BASE_URL}/clubs/{club_id}/join", json={"user_id": user_id})
     return r.status_code
+
+def create_club(username, club_name):
+    profile = get_profile_info(username)
+    if not profile:
+        return False
+    
+    user_id = profile.get("id")
+    
+    try:
+        r = requests.post(f"{BASE_URL}/clubs", json={
+            "name": club_name, 
+            "user_id": user_id
+        })
+        return r.status_code == 201
+    except Exception:
+        return False
