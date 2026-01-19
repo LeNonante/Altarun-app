@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Altarun - Espace Clubs</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/clubs.css') }}">
 </head>
 <body>
     <div class="app-container">
@@ -73,10 +73,24 @@
                     <a href="#" class="btn-action primary">
                         Créer un Club
                     </a>
-                    <a href="#" class="btn-action secondary">
-                        Rejoindre un Club
-                    </a>
+                    <div class="join-section">
+                        <form method="POST" action="{{ url_for('clubs') }}">
+                            <input type="text" name="club_code" class="join-input" placeholder="Code du club" maxlength="6">
+                            <input type="hidden" name="action" value="join_club">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn-action secondary">
+                                Rejoindre un Club
+                            </button>
+                        </form>
+                    </div>
                 </div>
+
+                {% if error %}
+                    <div class="error-message">{{ error }}</div>
+                {% endif %}
+                {% if message %}
+                    <div class="success-message">{{ message }}</div>
+                {% endif %}
 
                 <!-- Stats Cards -->
                 <div class="stats-row">
@@ -99,8 +113,8 @@
                             <div class="club-info">
                                 <div class="club-name">{{ c.name }}</div>
                                 <div class="club-sub">Admin: {{ c.admin }}</div>
+                                <div class="club-sub">Code: {{ c.code }}</div>
                             </div>
-                            <button class="card-menu" aria-label="menu">⋮</button>
                         </div>
 
                         <div class="club-metrics">
@@ -108,10 +122,17 @@
                                 <div class="metric-label">Membres</div>
                                 <div class="metric-value">{{ c.members_count }}</div>
                             </div>
+                            <div class="metric">
+                                <div class="metric-label">Equipes</div>
+                                <div class="metric-value">{{ c.teams_count }}</div>
+                            </div>
                         </div>
 
                         <div class="card-actions">
-                            <a href="#" class="btn-analytics">Voir plus →</a>
+                        {% if c.admin == current_user.id %}
+                            <a href="#" class="btn-manage">Gérer le club</a>
+                        {% endif %}
+                        <a href="#" class="btn-analytics">Voir plus →</a>
                         </div>
                     </div>
                     {% endfor %}

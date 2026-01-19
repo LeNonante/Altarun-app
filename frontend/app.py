@@ -105,18 +105,28 @@ def login():
 def index():
     return f"Bonjour, {current_user.id}! Vous êtes connecté."
 
-@app.route('/clubs')
+@app.route('/clubs', methods=['GET', 'POST'])
 @login_required
 def clubs():
     context = {"version": app.config["APP_VERSION"]}
-    clubs = list_clubs()
+    clubs = get_profile_info(current_user.id).get("clubs", [])
     # Statistiques simples
     context["clubs"] = clubs
     context["total_clubs"] = len(clubs)
     context["active_members"] = sum(c.get("members_count", 0) for c in clubs)
-    # Placeholder pour distance et rang global
-    context["avg_distance"] = 0
-    context["global_rank"] = 14
+    
+    if request.method=="POST":
+        if request.form.get("action") == "join_club": # Rejoindre un club via code
+            club_code = request.form.get("club_code")
+            
+            r= join_club(current_user.id, club_code)
+
+            if r == 200:
+                context["message"] = "Vous avez rejoint le club avec succès."
+            elif r == 400:
+                context["error"] = f"Échec pour rejoindre le club : vous êtes déjà membre de ce club."
+            else:
+                context["error"] = f"Échec pour rejoindre le club : code invalide."
     return render_template('clubs.html', **context)
 
 @app.route('/coach')

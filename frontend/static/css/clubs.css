@@ -1,0 +1,290 @@
+/* Import des styles globaux pour accéder aux variables */
+@import url('style.css');
+
+/* ============================================
+   ACTIONS BAR (Boutons Créer / Rejoindre)
+   ============================================ */
+.actions-bar {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 32px;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.join-section {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+}
+
+.join-input {
+    padding: 12px 16px;
+    border: 1px solid var(--color-border-light);
+    border-radius: 8px;
+    background-color: var(--color-bg-input);
+    color: var(--color-text-primary);
+    font-size: 14px;
+    transition: border-color 0.3s ease;
+}
+
+.join-input::placeholder {
+    color: var(--color-text-tertiary);
+}
+
+.join-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+.btn-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+/* Style bouton principal (orange) */
+.btn-action.primary {
+    background-color: var(--color-primary);
+    color: var(--color-text-primary);
+    border: 1px solid transparent;
+}
+
+.btn-action.primary:hover {
+    background-color: var(--color-primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+}
+
+/* Style bouton secondaire (outline) */
+.btn-action.secondary {
+    background-color: transparent;
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border-light);
+}
+
+.btn-action.secondary:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    background-color: var(--color-primary-lighter);
+}
+
+/* ============================================
+   STATS ROW (Cartes statistiques en haut)
+   ============================================ */
+.stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 24px;
+    margin-bottom: 40px;
+}
+
+.stat-card {
+    background: var(--color-bg-card);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: border-color 0.3s ease;
+}
+
+.stat-card:hover {
+    border-color: var(--color-border-light);
+}
+
+.stat-label {
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.stat-value {
+    color: var(--color-text-primary);
+    font-size: 36px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+/* ============================================
+   CLUBS GRID & CARDS
+   ============================================ */
+.clubs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 24px;
+}
+
+.club-card {
+    background: var(--color-bg-card);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.club-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    border-color: var(--color-primary-light);
+}
+
+/* En-tête de la carte (Logo + Nom + Admin) */
+.club-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.club-avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 12px;
+    object-fit: cover;
+    background: var(--color-bg-input);
+    padding: 8px;
+    border: 1px solid var(--color-border);
+}
+
+.club-info {
+    flex: 1;
+    min-width: 0; /* Pour gérer le texte trop long */
+}
+
+.club-name {
+    color: var(--color-text-primary);
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.club-sub {
+    color: var(--color-text-secondary);
+    font-size: 13px;
+}
+
+/* Menu "trois points" */
+.card-menu {
+    background: none;
+    border: none;
+    color: var(--color-text-tertiary);
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: color 0.2s, background 0.2s;
+    align-self: flex-start;
+}
+
+.card-menu:hover {
+    color: var(--color-text-primary);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* Métriques (Membres, etc.) */
+.club-metrics {
+    display: flex;
+    gap: 24px;
+    padding: 16px 0;
+    border-top: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
+    margin-bottom: 16px;
+}
+
+.metric {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.metric-label {
+    color: var(--color-text-tertiary);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.metric-value {
+    color: var(--color-text-primary);
+    font-size: 15px;
+    font-weight: 600;
+}
+
+/* Actions au bas de la carte */
+.card-actions {
+    margin-top: auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.btn-analytics {
+    color: var(--color-primary);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 0;
+    transition: gap 0.2s ease, color 0.2s ease;
+}
+
+.btn-analytics:hover {
+    gap: 10px;
+    color: var(--color-primary-dark);
+}
+
+.btn-manage {
+    padding: 8px 16px;
+    background: var(--color-primary);
+    color: var(--color-text-primary);
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media (max-width: 768px) {
+    .actions-bar {
+        flex-direction: column;
+    }
+    
+    .btn-action {
+        width: 100%;
+    }
+    
+    .clubs-grid {
+        grid-template-columns: 1fr;
+    }
+}

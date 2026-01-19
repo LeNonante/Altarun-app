@@ -76,3 +76,20 @@ def list_clubs():
     except Exception:
         pass
     return []
+
+
+def join_club(username, club_code):
+    profile = get_profile_info(username)
+    if not profile:
+        return 400
+    
+    user_id = profile.get("id")
+    clubs = list_clubs()
+    
+    club_id = next((c.get("id") for c in clubs if c.get("code") == club_code), None)
+    
+    if club_id is None:
+        return 404
+    
+    r = requests.post(f"{BASE_URL}/clubs/{club_id}/join", json={"user_id": user_id})
+    return r.status_code

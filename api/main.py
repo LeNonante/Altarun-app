@@ -74,7 +74,10 @@ def get_user(username):
         'username': user.username,
         'first_name': user.first_name,
         'last_name': user.last_name,
-        'email': user.email
+        'email': user.email,
+        'clubs': [{
+        'id': c.id, 'name': c.name, 'admin': c.admin.username, 'members_count': c.members.count(), 'teams_count': len(c.teams), 'code': c.code
+        } for c in user.clubs]
     }
 
 @app.route('/users/<username>/photo', methods=['GET'])
@@ -147,7 +150,7 @@ def handle_clubs():
         user = User.query.get(user_id)
         if not user: return {'error': 'User not found'}, 404
         
-        code=random.choices('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=6) # Génération d'un code unique
+        code=random.choices('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=6) # Génération d'un code unique 
         while Club.query.filter_by(code=''.join(code)).first() is not None: # Vérification de l'unicité
             code=random.choices('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=6)
         
@@ -162,9 +165,22 @@ def handle_clubs():
     # GET : Récupérer tous les clubs
     clubs = Club.query.all()
     return jsonify([{
-        'id': c.id, 'name': c.name, 'admin': c.admin.username, 'members_count': c.members.count(), 'code': c.code
+        'id': c.id, 'name': c.name, 'admin': c.admin.username, 'members_count': c.members.count(), 'teams_count': len(c.teams), 'code': c.code
     } for c in clubs])
 
+@app.route('/clubs/<int:club_id>', methods=['GET'])
+def get_club(club_id):
+    club = Club.query.get_or_404(club_id)
+    return {
+        'id': club.id,
+        'name': club.name,
+        'admin': club.admin.username,
+        'members_count': club.members.count(),
+        'teams_count': len(club.teams),
+        'code': club.code
+    }
+    
+    
 # --- ROUTE JOIN (Rejoindre un club) ---
 
 @app.route('/clubs/<int:club_id>/join', methods=['POST'])
@@ -180,7 +196,7 @@ def join_club(club_id):
 
     user.clubs.append(club)
     db.session.commit()
-    return {'message': f'{user.username} a rejoint {club.name}'}
+    return {'message': f'{user.username} a rejoint {club.name}'}, 200
 
 # --- ROUTES TEAMS ---
 
