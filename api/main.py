@@ -141,6 +141,14 @@ def authenticate():
 
 # --- ROUTES CLUBS ---
 
+@app.route('/clubs/auth', methods=['POST'])
+def club_authenticate():
+    data = request.get_json()
+    club = Club.query.filter_by(id=data['id']).first()
+    if club.is_private==False or (club.is_private==True and check_password_hash(club.password_hash, data['password'])):
+        return {'message': 'Authentication successful'}, 200
+    return {'message': 'Invalid credentials'}, 401
+
 @app.route('/clubs', methods=['GET', 'POST'])
 def handle_clubs():
     if request.method == 'POST':
@@ -165,7 +173,7 @@ def handle_clubs():
     # GET : Récupérer tous les clubs
     clubs = Club.query.all()
     return jsonify([{
-        'id': c.id, 'name': c.name, 'admin': c.admin.username, 'members_count': c.members.count(), 'teams_count': len(c.teams), 'code': c.code
+        'id': c.id, 'name': c.name, 'admin': c.admin.username, 'members_count': c.members.count(), 'teams_count': len(c.teams), 'code': c.code, 'is_private': c.is_private
     } for c in clubs])
 
 @app.route('/clubs/<int:club_id>', methods=['GET'])
@@ -177,7 +185,8 @@ def get_club(club_id):
         'admin': club.admin.username,
         'members_count': club.members.count(),
         'teams_count': len(club.teams),
-        'code': club.code
+        'code': club.code,
+        'is_private': club.is_private
     }
     
     

@@ -43,6 +43,8 @@ class Club(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     code= db.Column(db.String(10), unique=True, nullable=False)
     photo= db.Column(db.LargeBinary)
+    is_private = db.Column(db.Boolean, default=False)
+    password_hash = db.Column(db.String(200))
     
     # L'admin (créateur) du club
     admin_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)

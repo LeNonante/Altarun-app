@@ -77,16 +77,26 @@ def list_clubs():
         pass
     return []
 
+def get_club_details(club_id):
+    if club_id is None:
+        return 404
+    r = requests.get(f"{BASE_URL}/clubs/{club_id}")
+    if r.status_code == 200:
+        return r.json()
+    return None
 
-def join_club(username, club_code):
+def get_club_id_by_code(club_code):
+    clubs = list_clubs()
+    club_id = next((c.get("id") for c in clubs if c.get("code") == club_code), None)
+    return club_id
+
+
+def join_club(username, club_id):
     profile = get_profile_info(username)
     if not profile:
         return 400
     
     user_id = profile.get("id")
-    clubs = list_clubs()
-    
-    club_id = next((c.get("id") for c in clubs if c.get("code") == club_code), None)
     
     if club_id is None:
         return 404

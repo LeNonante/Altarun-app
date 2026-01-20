@@ -121,15 +121,23 @@ def clubs():
         action = request.form.get("action")
         if action == "join_club": # Rejoindre un club via code
             club_code = request.form.get("club_code")
-            
-            r= join_club(current_user.id, club_code)
-            context["clubs"] = get_profile_info(current_user.id).get("clubs", [])
-            if r == 200:
-                context["message"] = "Vous avez rejoint le club avec succès."
-            elif r == 400:
-                context["error"] = f"Échec pour rejoindre le club : vous êtes déjà membre de ce club."
-            else:
+            club_id=get_club_id_by_code(club_code)
+            club_details=get_club_details(club_id)
+            if club_details==404:
                 context["error"] = f"Échec pour rejoindre le club : code invalide."
+                return render_template('clubs.html', **context)
+            
+            if club_details.get("is_private", False): # Club privé, demande de mot de passe
+                print("Club privé, authentification requise")
+            else :
+                r= join_club(current_user.id, club_id)
+                context["clubs"] = get_profile_info(current_user.id).get("clubs", [])
+                if r == 200:
+                    context["message"] = "Vous avez rejoint le club avec succès."
+                elif r == 400:
+                    context["error"] = f"Échec pour rejoindre le club : vous êtes déjà membre de ce club."
+                else:
+                    context["error"] = f"Échec pour rejoindre le club : code invalide."
                 
         elif action == "create_club":
             club_name = request.form.get("club_name")
