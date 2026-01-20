@@ -90,7 +90,14 @@ def get_club_id_by_code(club_code):
     club_id = next((c.get("id") for c in clubs if c.get("code") == club_code), None)
     return club_id
 
-
+def check_club_password(club_id, password):
+    """Vérifie le mot de passe du club via l'API"""
+    try:
+        r = requests.post(f"{BASE_URL}/clubs/auth", json={"id": club_id, "password": password})
+        return r.status_code == 200
+    except Exception:
+        return False
+    
 def join_club(username, club_id):
     profile = get_profile_info(username)
     if not profile:

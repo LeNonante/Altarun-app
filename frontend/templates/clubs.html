@@ -183,5 +183,63 @@
             }
         }
     </script>
+
+    <div id="passwordClubModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Club Privé</h2>
+                <button onclick="closePasswordModal()" class="close-btn">&times;</button>
+            </div>
+            <p style="color: #aaa; margin-bottom: 16px;">Ce club est privé. Veuillez entrer le mot de passe pour le rejoindre.</p>
+            
+            <form method="POST" action="{{ url_for('clubs') }}">
+                <input type="hidden" name="action" value="join_club">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                
+                <input type="hidden" id="modal_club_code" name="club_code" value="{{ target_code if target_code else '' }}">
+
+                <div class="form-group">
+                    <label for="club_password">Mot de passe du club</label>
+                    <input type="password" id="club_password" name="club_password" required placeholder="••••••••" style="width: 100%; padding: 12px; margin-top: 8px; border-radius: 8px; border: 1px solid #444; background: #282830; color: white;">
+                </div>
+                
+                <div class="modal-actions" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                    <button type="button" onclick="closePasswordModal()" class="btn-action secondary">Annuler</button>
+                    <button type="submit" class="btn-action primary">Valider</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Fonctions pour la modale Création (déjà existantes ou à adapter)
+        function openCreateModal() { document.getElementById('createClubModal').style.display = 'flex'; }
+        function closeCreateModal() { document.getElementById('createClubModal').style.display = 'none'; }
+
+        // Fonctions pour la modale Mot de Passe
+        function openPasswordModal(code) {
+            if(code) document.getElementById('modal_club_code').value = code;
+            document.getElementById('passwordClubModal').style.display = 'flex';
+        }
+        function closePasswordModal() {
+            document.getElementById('passwordClubModal').style.display = 'none';
+        }
+
+        // Détection automatique venant du serveur Flask
+        {% if ask_password %}
+            document.addEventListener('DOMContentLoaded', function() {
+                openPasswordModal("{{ target_code }}");
+            });
+        {% endif %}
+
+        // Fermeture au clic dehors
+        window.onclick = function(event) {
+            let pModal = document.getElementById('passwordClubModal');
+            let cModal = document.getElementById('createClubModal');
+            if (event.target == pModal) pModal.style.display = "none";
+            if (event.target == cModal) cModal.style.display = "none";
+        }
+    </script>
+
 </body>
 </html>

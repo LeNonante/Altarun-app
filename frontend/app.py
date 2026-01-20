@@ -123,21 +123,41 @@ def clubs():
             club_code = request.form.get("club_code")
             club_id=get_club_id_by_code(club_code)
             club_details=get_club_details(club_id)
+            password = request.form.get("club_password")
+            
             if club_details==404:
                 context["error"] = f"Échec pour rejoindre le club : code invalide."
                 return render_template('clubs.html', **context)
-            
-            if club_details.get("is_private", False): # Club privé, demande de mot de passe
-                print("Club privé, authentification requise")
             else :
-                r= join_club(current_user.id, club_id)
-                context["clubs"] = get_profile_info(current_user.id).get("clubs", [])
-                if r == 200:
-                    context["message"] = "Vous avez rejoint le club avec succès."
-                elif r == 400:
-                    context["error"] = f"Échec pour rejoindre le club : vous êtes déjà membre de ce club."
+                is_private = club_details.get("is_private", False) # Club privé, demande de mot de passe
+                
+                # Cas 1: Club Privé ET pas de mot de passe fourni -> On ouvre la modale
+                if is_private and not password:
+                    context["ask_password"] = True       # Flag pour le template
+                    context["target_code"] = club_code   # Pour pré-remplir la modale
+                
+                # Cas 2: Club Privé AVEC mot de passe -> On vérifie puis on rejoint
+                elif is_private and password:
+                    if check_club_password(club_id, password):
+                        r = join_club(current_user.id, club_id)
+                        if r == 200:
+                            context["message"] = "Vous avez rejoint le club privé avec succès."
+                            context["clubs"] = get_profile_info(current_user.id).get("clubs", [])
+                        elif r == 400:
+                            context["error"] = "Vous êtes déjà membre de ce club."
+                    else:
+                        context["error"] = "Mot de passe incorrect."
+                        context["ask_password"] = True      # On rouvre la modale en cas d'erreur
+                        context["target_code"] = club_code
+
+                # Cas 3: Club Public -> On rejoint direct
                 else:
-                    context["error"] = f"Échec pour rejoindre le club : code invalide."
+                    r = join_club(current_user.id, club_id)
+                    if r == 200:
+                        context["message"] = "Vous avez rejoint le club avec succès."
+                        context["clubs"] = get_profile_info(current_user.id).get("clubs", [])
+                    elif r == 400:
+                        context["error"] = "Vous êtes déjà membre de ce club."
                 
         elif action == "create_club":
             club_name = request.form.get("club_name")
