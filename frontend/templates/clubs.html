@@ -16,7 +16,7 @@
             </div>
 
             <nav class="sidebar-nav">
-                <a href="{{ url_for('clubs') }}" class="nav-item">
+                <a href="{{ url_for('index') }}" class="nav-item">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <rect x="3" y="3" width="7" height="7"></rect>
                         <rect x="14" y="3" width="7" height="7"></rect>
@@ -130,9 +130,9 @@
 
                         <div class="card-actions">
                         {% if c.admin == current_user.id %}
-                            <a href="#" class="btn-manage">Gérer le club</a>
+                            <a href="#" class="btn-analytics">Gérer le club</a>
                         {% endif %}
-                        <a href="#" class="btn-analytics">Voir plus →</a>
+                        <a href="#" class="btn-manage">Voir plus →</a>
                         </div>
                     </div>
                     {% endfor %}

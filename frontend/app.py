@@ -103,7 +103,9 @@ def login():
 @app.route('/')
 @login_required
 def index():
-    return f"Bonjour, {current_user.id}! Vous êtes connecté."
+    context = {}
+    context["version"] = app.config["APP_VERSION"]
+    return render_template('index.html', **context)
 
 @app.route('/clubs', methods=['GET', 'POST'])
 @login_required
@@ -143,7 +145,9 @@ def clubs():
 @app.route('/coach')
 @login_required
 def coach():
-    return f"Bienvenue dans l'espace coach, {current_user.id}."
+    context = {}
+    context["version"] = app.config["APP_VERSION"]
+    return render_template('coach.html', **context)
 
 @app.route('/logout')
 @login_required
