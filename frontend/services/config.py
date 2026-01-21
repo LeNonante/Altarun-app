@@ -28,6 +28,14 @@ def check_password(username, password):
     r = requests.post(f"{BASE_URL}/auth", json={"username": username, "password": password})
     return r.status_code == 200
 
+def create_user(username, email, password):
+    r = requests.post(f"{BASE_URL}/users", json={
+        "username": username,
+        "email": email,
+        "password": password
+    })
+    return r.status_code == 201
+
 def get_profile_info(username):
     r = requests.get(f"{BASE_URL}/users/{username}")
     if r.status_code == 200:
@@ -62,7 +70,7 @@ def update_password(username, current_password, new_password):
     return r.status_code == 200
 
 def check_email_availability(email):
-    r = requests.get(f"{BASE_URL}/users/check_email", params={"email": email})
+    r = requests.get(f"{BASE_URL}/check_email", params={"email": email})
     if r.status_code == 200:
         data = r.json()
         return data.get("available", False)

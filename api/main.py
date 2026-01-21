@@ -139,6 +139,14 @@ def authenticate():
         return {'message': 'Authentication successful'}, 200
     return {'message': 'Invalid credentials'}, 401
 
+@app.route('/check_email', methods=['GET'])
+def check_email():
+    email = request.args.get('email')
+    user = User.query.filter_by(email=email).first()
+    if user:
+        return {'available': False}, 200
+    return {'available': True}, 200
+
 # --- ROUTES CLUBS ---
 
 @app.route('/clubs/auth', methods=['POST'])
