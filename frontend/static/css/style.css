@@ -439,6 +439,9 @@ input:checked + .slider:before {
 .close-btn { background: none; border: none; color: #aaa; font-size: 28px; cursor: pointer; }
 .close-btn:hover { color: white; }
 
+
+
+
 /* ============================================
    RESPONSIVE
    ============================================ */

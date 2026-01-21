@@ -167,6 +167,12 @@
     min-width: 0; /* Pour gérer le texte trop long */
 }
 
+.club-name-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
 .club-name {
     color: var(--color-text-primary);
     font-size: 18px;
@@ -175,6 +181,21 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.club-privacy {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    border: 1px solid var(--color-border-light);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--color-primary);
+}
+
+.club-privacy svg {
+    display: block;
 }
 
 .club-sub {
