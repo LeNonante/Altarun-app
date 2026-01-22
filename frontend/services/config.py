@@ -50,6 +50,24 @@ def update_profile_info(username, first_name, last_name, email):
     })
     return r.status_code == 200
 
+def update_strava_connection(username, access_token, expires_at, refresh_token):
+    r = requests.put(f"{BASE_URL}/users/{username}/strava", json={
+        "access_token": access_token,
+        "expires_at": expires_at,
+        "refresh_token": refresh_token
+    })
+    return r.status_code == 200
+
+def get_strava_connection(username):
+    r = requests.get(f"{BASE_URL}/users/{username}/strava")
+    if r.status_code == 200:
+        return r.json()
+    return None
+
+def disconnect_strava(username):
+    r = requests.delete(f"{BASE_URL}/users/{username}/strava")
+    return r.status_code == 200
+
 def update_profile_picture(username, file_storage):
     # On prépare le fichier pour l'envoi via requests
     files = {'photo': (file_storage.filename, file_storage.stream, file_storage.mimetype)}

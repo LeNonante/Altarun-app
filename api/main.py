@@ -75,6 +75,7 @@ def get_user(username):
         'first_name': user.first_name,
         'last_name': user.last_name,
         'email': user.email,
+        'is_strava_connected': user.is_strava_connected,
         'clubs': [{
         'id': c.id, 'name': c.name, 'admin': c.admin.username, 'members_count': c.members.count(), 'teams_count': len(c.teams), 'code': c.code, "is_private": c.is_private
         } for c in user.clubs]
@@ -130,6 +131,34 @@ def update_user_password(username):
     user.password_hash = generate_password_hash(new_password)
     db.session.commit()
     return {'message': 'Password updated successfully'}, 200
+
+@app.route('/users/<username>/strava', methods=['GET', 'PUT', 'DELETE'])
+def update_user_strava(username):
+    user = User.query.filter_by(username=username).first()
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    if request.method == 'GET':
+        return {
+            'is_strava_connected': user.is_strava_connected,
+            'strava_access_token': user.strava_access_token,
+            'strava_expires_at': user.strava_expires_at,
+            'strava_refresh_token': user.strava_refresh_token
+        }
+    if request.method == 'DELETE':
+        user.is_strava_connected = False
+        user.strava_access_token = None
+        user.strava_expires_at = None
+        user.strava_refresh_token = None
+        db.session.commit()
+        return {'message': 'Strava disconnected successfully'}, 200
+    if request.method == 'PUT':
+        data = request.get_json()
+        user.is_strava_connected = True
+        user.strava_access_token = data.get('access_token', user.strava_access_token)
+        user.strava_expires_at = data.get('expires_at', user.strava_expires_at)
+        user.strava_refresh_token = data.get('refresh_token', user.strava_refresh_token)
+        db.session.commit()
+        return {'message': 'Strava connection updated successfully'}, 200
 
 @app.route('/auth', methods=['POST'])
 def authenticate():

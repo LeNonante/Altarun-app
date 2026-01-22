@@ -195,19 +195,39 @@
                             <h3>Compte Strava</h3>
                         </div>
                         <p class="card-description">Connectez votre compte Strava pour synchroniser vos activités et suivre vos statistiques.</p>
-                        {% if strava_login_url %}
-                        <div class="card-actions">
-                            <a class="btn-strava" href="{{ strava_login_url }}">
-                                <span class="strava-icon">
-                                    <svg width="20px" height="20px" viewBox="0 0 24 24" role="img" xmlns="http://www.w3.org/2000/svg" fill="#FFFFFF">
-                                        <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169"/>
-                                    </svg>
-                                </span>
-                                <span>Lier mon compte Strava</span>
-                            </a>
-                        </div>
+                        {% if is_strava_connected %}
+                            <div class="card-actions">
+
+                            <form method="POST" action="{{ url_for('settings') }}">
+                                <div class="action-buttons">        
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <input type="hidden" name="action" value="disconnect_strava">
+                                    <button class="btn-disconnect-strava" type="submit">
+                                        <span class="strava-icon">
+                                            <svg width="20px" height="20px" viewBox="0 0 24 24" role="img" xmlns="http://www.w3.org/2000/svg" fill="#FFFFFF">
+                                                <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169"/>
+                                            </svg>
+                                        </span>
+                                        <span>Déconnecter mon compte Strava</span>
+                                    </button>
+                                </div>
+                                </form>
+                            </div>
                         {% else %}
-                        <p class="card-description muted">Lien de connexion Strava indisponible pour le moment.</p>
+                            {% if strava_login_url %}
+                            <div class="card-actions">
+                                <a class="btn-strava" href="{{ strava_login_url }}">
+                                    <span class="strava-icon">
+                                        <svg width="20px" height="20px" viewBox="0 0 24 24" role="img" xmlns="http://www.w3.org/2000/svg" fill="#FFFFFF">
+                                            <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169"/>
+                                        </svg>
+                                    </span>
+                                    <span>Lier mon compte Strava</span>
+                                </a>
+                            </div>
+                            {% else %}
+                            <p class="card-description muted">Lien de connexion Strava indisponible pour le moment.</p>
+                            {% endif %}
                         {% endif %}
                     </div>
 

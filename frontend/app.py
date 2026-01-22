@@ -47,6 +47,13 @@ def settings():
     context["version"] = app.config["APP_VERSION"]
     context["strava_login_url"] = URL_LOGIN_STRAVA
     infos = get_profile_info(current_user.id)
+    is_strava_connected = infos.get("is_strava_connected", False)
+    
+    # Récupérer les messages d'erreur et de succès
+    context["error"] = request.args.get('error')
+    context["message"] = request.args.get('message')
+    
+    context["is_strava_connected"] = is_strava_connected
     if infos:
         context["first_name"] = infos.get("first_name", "")
         context["last_name"] = infos.get("last_name", "")
@@ -83,6 +90,12 @@ def settings():
                     context["message_password"] = "Mot de passe mis à jour avec succès."
                 else:
                     context["error_password"] = "Échec de la mise à jour du mot de passe."
+        if request.form.get("action") == "disconnect_strava":
+            if disconnect_strava(current_user.id):
+                context["is_strava_connected"] = False
+                context["message"] = "Déconnexion de Strava réussie."
+            else:
+                context["error"] = "Échec de la déconnexion de Strava."
     return render_template('settings.html', **context)
 
 
@@ -222,16 +235,12 @@ def signup():
     return render_template('signup.html', **context)
 
 @app.route('/exchange_token')
-def exchange_token():    
-    # 1. Strava a renvoyé ton pote ici avec un code dans l'URL
-    # ex: http://localhost:5000/exchange_token?code=a1b2c3d4...
+@login_required
+def exchange_token():
     code = request.args.get('code')
     if not code:
         return "Erreur : Pas de code reçu de Strava."
-    else :
-        print(f"Code reçu de Strava : {code}")
-        
-    # 2. On échange ce code contre le TOKEN final
+    
     token_response = requests.post(
         'https://www.strava.com/oauth/token',
         data={
@@ -242,18 +251,20 @@ def exchange_token():
         }
     )
     
-    # Convertir en JSON
     data = token_response.json()
+    access_token = data.get('access_token')
+    refresh_token = data.get('refresh_token')
+    expires_at = data.get('expires_at')
+    
+    if not access_token or not refresh_token:
+        return redirect(url_for('settings', error="Erreur lors de l'échange du token avec Strava."))
 
-    print("\n--- NOUVEL UTILISATEUR CONNECTÉ ---")
-    print(data) # Affiche tout le JSON dans ta console (terminal)
-    print(f"Access Token : {data.get('access_token')}")
-    print(f"Utilisateur : {data.get('athlete', {}).get('firstname')}")
-    print("-----------------------------------\n")
+    r = update_strava_connection(current_user.id, access_token, expires_at, refresh_token)
+    if r:
+        return redirect(url_for('settings', message="Connexion à Strava réussie !"))
+    else:
+        return redirect(url_for('settings', error="Échec de la connexion à Strava dans votre profil."))
 
-    # 3. (Important) sauvegarder le 'refresh_token' et 'access_token' dans ta base de données, lié à l'utilisateur.
-
-    return f"Merci {data['athlete']['firstname']} ! Ton token a été reçu. Regarde la console du serveur."
 
 @app.route('/profile-picture/<username>')
 @login_required
