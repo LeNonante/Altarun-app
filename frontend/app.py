@@ -201,19 +201,19 @@ def signup():
     context["version"] = app.config["APP_VERSION"]
     if request.method == "POST":
         if request.form.get("action") == "signup":
-            username = request.form.get("username")
-            password = request.form.get("password")
+            context["username"] = request.form.get("username")
+            context["password"] = request.form.get("password")
             confirm_password = request.form.get("confirm_password")
-            email = request.form.get("email")
-            if check_email_availability(email):
-                if password != confirm_password:
+            context["email"] = request.form.get("email")
+            if check_email_availability(context["email"]):
+                if context["password"] != confirm_password:
                     context["erreur"] = "Le mot de passe et la confirmation ne correspondent pas."
                 else :
-                    result = create_user(username, email, password)
+                    result = create_user(context["username"], context["email"], context["password"])
                     if result:
-                        user = User(username)
+                        user = User(context["username"])
                         login_user(user)
-                        session['username'] = username  # Stocke le nom d'utilisateur dans la session
+                        session['username'] = context["username"]  # Stocke le nom d'utilisateur dans la session
                         return redirect(url_for('index'))
                     else:
                         context["erreur"] = "Échec de la création du compte. Le nom d'utilisateur est peut-être déjà pris."

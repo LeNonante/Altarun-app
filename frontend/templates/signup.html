@@ -25,7 +25,8 @@
                     <input 
                         type="text" 
                         id="username" 
-                        name="username" 
+                        name="username"
+                        {% if username %} value="{{ username }}" {% endif %}
                         placeholder="e.g. marathon_runner"
                         required
                     >
@@ -37,6 +38,7 @@
                         type="email" 
                         id="email" 
                         name="email" 
+                        {% if email %} value="{{ email }}" {% endif %}
                         placeholder="e.g. marathon_runner@example.com"
                         required
                     >
@@ -51,6 +53,7 @@
                             type="password" 
                             id="password" 
                             name="password" 
+                            {% if password %} value="{{ password }}" {% endif %}
                             placeholder="••••••••"
                             required
                         >
