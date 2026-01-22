@@ -122,6 +122,46 @@
                 </div>
                 </form>
 
+                <!-- Update Password Card -->
+                <div class="settings-card">
+                    <form method="POST" action="{{ url_for('settings') }}">
+                    <div class="card-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b35" stroke-width="2">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                        <h3>Mettre à jour le mot de passe</h3>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="current-password">MOT DE PASSE ACTUEL</label>
+                        <input type="password" id="current-password" name="current_password" placeholder="••••••••">
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="new-password">NOUVEAU MOT DE PASSE</label>
+                            <input type="password" id="new-password" name="new_password" placeholder="••••••••">
+                        </div>
+                        <div class="form-group">
+                            <label for="confirm-password">CONFIRMER LE NOUVEAU MOT DE PASSE</label>
+                            <input type="password" id="confirm-password" name="confirm_password" placeholder="••••••••">
+                        </div>
+                    </div>
+                    {% if error_password %}
+                        <div class="error-message">{{ error_password }}</div>
+                    {% endif %}
+                    {% if message_password %}
+                        <div class="success-message">{{ message_password }}</div>
+                    {% endif %}
+                    <div class="action-buttons">        
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <input type="hidden" name="action" value="update_password">
+                        <button type="submit" class="btn-save">Mettre à jour le mot de passe</button>
+                    </div>
+                    </form>
+                </div>
+
                 <!-- Two Cards Row -->
                 <div class="cards-row">
                     <!-- Two-Factor Auth Card -->
@@ -146,45 +186,31 @@
                         </div>
                     </div>
 
-                    <!-- Update Password Card -->
+                    <!-- Strava  -->
                     <div class="settings-card half-card">
-                        <form method="POST" action="{{ url_for('settings') }}">
                         <div class="card-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b35" stroke-width="2">
-                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                            <svg width="24px" height="24px" viewBox="0 0 24 24" role="img" xmlns="http://www.w3.org/2000/svg" fill="#ff6b35">
+                                <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169"/>
                             </svg>
-                            <h3>Mettre à jour le mot de passe</h3>
+                            <h3>Compte Strava</h3>
                         </div>
-                        
-                        <div class="form-group">
-                            <label for="current-password">MOT DE PASSE ACTUEL</label>
-                            <input type="password" id="current-password" name="current_password" placeholder="••••••••">
+                        <p class="card-description">Connectez votre compte Strava pour synchroniser vos activités et suivre vos statistiques.</p>
+                        {% if strava_login_url %}
+                        <div class="card-actions">
+                            <a class="btn-strava" href="{{ strava_login_url }}">
+                                <span class="strava-icon">
+                                    <svg width="20px" height="20px" viewBox="0 0 24 24" role="img" xmlns="http://www.w3.org/2000/svg" fill="#FFFFFF">
+                                        <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169"/>
+                                    </svg>
+                                </span>
+                                <span>Lier mon compte Strava</span>
+                            </a>
                         </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="new-password">NOUVEAU MOT DE PASSE</label>
-                                <input type="password" id="new-password" name="new_password" placeholder="••••••••">
-                            </div>
-                            <div class="form-group">
-                                <label for="confirm-password">CONFIRMER LE NOUVEAU MOT DE PASSE</label>
-                                <input type="password" id="confirm-password" name="confirm_password" placeholder="••••••••">
-                            </div>
-                        </div>
-                        {% if error_password %}
-                            <div class="error-message">{{ error_password }}</div>
+                        {% else %}
+                        <p class="card-description muted">Lien de connexion Strava indisponible pour le moment.</p>
                         {% endif %}
-                        {% if message_password %}
-                            <div class="success-message">{{ message_password }}</div>
-                        {% endif %}
-                        <div class="action-buttons">        
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                            <input type="hidden" name="action" value="update_password">
-                            <button type="submit" class="btn-save">Mettre à jour le mot de passe</button>
-                        </div>
-                        </form>
                     </div>
+
                 </div>
 
             </div>

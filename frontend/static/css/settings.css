@@ -131,6 +131,11 @@
     margin-bottom: 24px;
 }
 
+.card-description.muted {
+    color: var(--color-text-tertiary);
+    margin-bottom: 0;
+}
+
 /* Toggle Switch */
 .toggle-container {
     display: flex;
@@ -162,6 +167,49 @@
 
 .toggle-status.enabled {
     color: var(--color-success);
+}
+
+.card-actions {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+}
+
+.btn-strava {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 18px;
+    background: #fc4c02;
+    color: #ffffff;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.btn-strava:hover {
+    background: #e74600;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(252, 76, 2, 0.35);
+}
+
+.btn-strava:active {
+    transform: translateY(0);
+}
+
+.strava-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
 }
 
 

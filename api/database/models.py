@@ -25,8 +25,9 @@ class User(db.Model):
     is_2fa_enabled = db.Column(db.Boolean, default=False)
     two_fa_secret = db.Column(db.String(100))
     photo = db.Column(db.LargeBinary)
-    strava_client_id = db.Column(db.String(100))
-    strava_client_secret = db.Column(db.String(100))
+    is_strava_connected = db.Column(db.Boolean, default=False)
+    strava_access_token = db.Column(db.String(100))
+    strava_expires_at = db.Column(db.Integer) # Timestamp d'expiration du token d'accès
     strava_refresh_token = db.Column(db.String(200))
     email = db.Column(db.String(120), unique=True, nullable=False)
     

@@ -45,6 +45,7 @@ def load_user(user_id):
 def settings():
     context = {}
     context["version"] = app.config["APP_VERSION"]
+    context["strava_login_url"] = URL_LOGIN_STRAVA
     infos = get_profile_info(current_user.id)
     if infos:
         context["first_name"] = infos.get("first_name", "")
@@ -244,15 +245,13 @@ def exchange_token():
     # Convertir en JSON
     data = token_response.json()
 
-    # --- C'EST ICI QUE TU PRINT ---
     print("\n--- NOUVEL UTILISATEUR CONNECTÉ ---")
     print(data) # Affiche tout le JSON dans ta console (terminal)
     print(f"Access Token : {data.get('access_token')}")
     print(f"Utilisateur : {data.get('athlete', {}).get('firstname')}")
     print("-----------------------------------\n")
 
-    # 3. (Important) C'est ici que tu devrais sauvegarder le 'refresh_token' 
-    # dans ta base de données associé au nom de ton pote.
+    # 3. (Important) sauvegarder le 'refresh_token' et 'access_token' dans ta base de données, lié à l'utilisateur.
 
     return f"Merci {data['athlete']['firstname']} ! Ton token a été reçu. Regarde la console du serveur."
 
