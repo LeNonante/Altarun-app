@@ -416,6 +416,51 @@ input:checked + .slider:before {
 }
 
 
+/* Banniere strava */
+.strava-banner {
+    background: linear-gradient(135deg, rgba(252, 76, 2, 0.15) 0%, rgba(252, 76, 2, 0.05) 100%);
+    border: 1px solid rgba(252, 76, 2, 0.3);
+    border-left: 4px solid #fc4c02;
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+}
+
+.strava-banner-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--color-text-primary);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.btn-banner-strava {
+    display: inline-flex;
+    align-items: center;
+    padding: 10px 20px;
+    background: #fc4c02;
+    color: #ffffff;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: all 0.3s ease;
+}
+
+.btn-banner-strava:hover {
+    background: #e74600;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(252, 76, 2, 0.3);
+}
+
+
+
 .modal-overlay {
     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(0, 0, 0, 0.7);

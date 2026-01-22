@@ -173,17 +173,23 @@ def two_fa():
 def index():
     context = {}
     context["version"] = app.config["APP_VERSION"]
+    infos = get_profile_info(current_user.id)
+    context["is_strava_connected"] = infos.get("is_strava_connected", False)
+    context["strava_login_url"] = URL_LOGIN_STRAVA
     return render_template('index.html', **context)
 
 @app.route('/clubs', methods=['GET', 'POST'])
 @login_required
 def clubs():
     context = {"version": app.config["APP_VERSION"]}
-    clubs = get_profile_info(current_user.id).get("clubs", [])
+    infos = get_profile_info(current_user.id)
+    clubs = infos.get("clubs", [])
     # Statistiques simples
     context["clubs"] = clubs
     context["total_clubs"] = len(clubs)
     context["active_members"] = sum(c.get("members_count", 0) for c in clubs)
+    context["is_strava_connected"] = infos.get("is_strava_connected", False)
+    context["strava_login_url"] = URL_LOGIN_STRAVA
     
     if request.method=="POST":
         action = request.form.get("action")
@@ -243,6 +249,9 @@ def clubs():
 def coach():
     context = {}
     context["version"] = app.config["APP_VERSION"]
+    infos = get_profile_info(current_user.id)
+    context["is_strava_connected"] = infos.get("is_strava_connected", False)
+    context["strava_login_url"] = URL_LOGIN_STRAVA
     return render_template('coach.html', **context)
 
 @app.route('/logout')
