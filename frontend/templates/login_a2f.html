@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Altarun - Connexion A2F</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="login-card">
+            <div class="logo">
+                <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="Altarun Logo">
+                <h1>Altarun</h1>
+            </div>
+
+            <div class="welcome-section">
+                <h2>Bienvenue, Athlète</h2>
+                <p>Entrez votre code de vérification à deux facteurs.</p>
+            </div>
+
+            <form method="post" action="/two_fa">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                {% if erreur %}
+                    <div class="error-message">{{ erreur }}</div>
+                {% endif %}
+                    <div class="form-group" style="margin-top: 24px;">
+                        <label for="2fa_code">Code 2FA</label>
+                        <div class="otp-inputs">
+                            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" pattern="[0-9]" required>
+                            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" pattern="[0-9]" required>
+                            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" pattern="[0-9]" required>
+                            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" pattern="[0-9]" required>
+                            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" pattern="[0-9]" required>
+                            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" pattern="[0-9]" required>
+                        </div>
+                        <input type="hidden" id="2fa_code" name="2fa_code">
+                    </div>
+
+                <button type="submit" class="submit-btn" name="action" value="loginUser">
+                    Se connecter
+                </button>
+            </form>
+
+
+            <div class="footer-links">
+                <a href="https://github.com/LeNonante/Altarun-app" target="_blank">Github</a>
+                <a href="{{ url_for('login') }}">Docs</a>
+            </div>
+
+            <div class="copyright">
+                © 2026 ALTARUN - LeNonante & GROULOR - {{ version }}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function togglePassword() {
+            const passwordInput = document.getElementById('password');
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+        }
+
+
+        // OTP inputs handling
+        const otpInputs = document.querySelectorAll('.otp-input');
+        const otpHidden = document.getElementById('2fa_code');
+
+        otpInputs.forEach((input, index) => {
+            // Quand on tape un chiffre, passer au suivant
+            input.addEventListener('input', (e) => {
+                const value = e.target.value;
+                // Ne garder que le dernier chiffre tapé
+                if (value.length > 1) {
+                    e.target.value = value.slice(-1);
+                }
+                // Passer au champ suivant si c'est un chiffre
+                if (e.target.value.match(/[0-9]/) && index < otpInputs.length - 1) {
+                    otpInputs[index + 1].focus();
+                }
+                updateOtpValue();
+            });
+
+            // Gestion de la touche Backspace
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace') {
+                    if (input.value === '' && index > 0) {
+                        // Si le champ est vide, revenir au précédent et le vider
+                        otpInputs[index - 1].focus();
+                        otpInputs[index - 1].value = '';
+                        updateOtpValue();
+                    }
+                }
+            });
+
+            // Permettre le collage d'un code complet
+            input.addEventListener('paste', (e) => {
+                e.preventDefault();
+                const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+                for (let i = 0; i < pastedData.length && i < otpInputs.length; i++) {
+                    otpInputs[i].value = pastedData[i];
+                }
+                if (pastedData.length > 0) {
+                    otpInputs[Math.min(pastedData.length, otpInputs.length - 1)].focus();
+                }
+                updateOtpValue();
+            });
+        });
+
+        function updateOtpValue() {
+            if (otpHidden) {
+                const code = Array.from(otpInputs).map(input => input.value).join('');
+                otpHidden.value = code;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -50,6 +50,29 @@ def update_profile_info(username, first_name, last_name, email):
     })
     return r.status_code == 200
 
+def enable_2fa(username):
+    r = requests.post(f"{BASE_URL}/users/{username}/2fa/enable")
+    if r.status_code == 200:
+        return r.json().get("secret")
+    return None
+
+def disable_2fa(username):
+    r = requests.post(f"{BASE_URL}/users/{username}/2fa/disable")
+    return r.status_code == 200
+
+def is_2fa_enabled(username):
+    r = requests.get(f"{BASE_URL}/users/{username}/2fa/status")
+    if r.status_code == 200:
+        return r.json().get("is_2fa_enabled", False)
+    return False
+
+def verify_2fa_token(username, token):
+    r = requests.post(f"{BASE_URL}/users/{username}/2fa/verify", json={"token": token})
+    if r.status_code == 200:
+        return r.json().get("valid", False)
+    return False
+
+
 def update_strava_connection(username, access_token, expires_at, refresh_token):
     r = requests.put(f"{BASE_URL}/users/{username}/strava", json={
         "access_token": access_token,

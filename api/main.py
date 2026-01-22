@@ -5,6 +5,7 @@ from database.extensions import db
 from database.models import User, Club, Team  # Importer les modèles pour qu'ils soient enregistrés
 from werkzeug.security import generate_password_hash, check_password_hash
 import random
+import pyotp
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 app = Flask(__name__)
@@ -167,6 +168,46 @@ def authenticate():
     if user and check_password_hash(user.password_hash, data['password']):
         return {'message': 'Authentication successful'}, 200
     return {'message': 'Invalid credentials'}, 401
+
+@app.route('/users/<username>/2fa/status', methods=['GET'])
+def check_2fa(username):
+    user = User.query.filter_by(username=username).first()
+    if user:
+        return {'is_2fa_enabled': user.is_2fa_enabled}, 200
+    return {'error': 'User not found'}, 404
+
+@app.route('/users/<username>/2fa/enable', methods=['POST'])
+def activate_2fa(username):
+    secret = pyotp.random_base32()
+    user = User.query.filter_by(username=username).first()
+    if user:
+        user.is_2fa_enabled = True
+        user.two_fa_secret = secret
+        db.session.commit()
+        return {'message': '2FA activated', 'secret': secret}, 200
+    return {'error': 'User not found'}, 404
+
+@app.route('/users/<username>/2fa/disable', methods=['POST'])
+def deactivate_2fa(username):
+    user = User.query.filter_by(username=username).first()
+    if user:
+        user.is_2fa_enabled = False
+        user.two_fa_secret = None
+        db.session.commit()
+        return {'message': '2FA deactivated'}, 200
+    return {'error': 'User not found'}, 404
+
+@app.route('/users/<username>/2fa/verify', methods=['POST'])
+def check_2fa_code(username):
+    code = request.json.get('token')
+    user = User.query.filter_by(username=username).first()
+    if user and user.is_2fa_enabled:
+        totp = pyotp.TOTP(user.two_fa_secret)
+        if totp.verify(code):
+            return {'valid': True}, 200
+        else:
+            return {'valid': False}, 200
+    return {'error': 'User not found or 2FA not enabled'}, 404
 
 @app.route('/check_email', methods=['GET'])
 def check_email():

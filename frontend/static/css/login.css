@@ -173,6 +173,37 @@ body::before {
     letter-spacing: 0.5px;
 }
 
+/* OTP Inputs */
+.otp-inputs {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.otp-input {
+    width: 50px;
+    height: 50px;
+    font-size: 24px;
+    text-align: center;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-bg-input);
+    color: var(--color-text-primary);
+    transition: all 0.3s ease;
+}
+
+.otp-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    background: var(--color-bg-input-focus);
+    box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
+}
+
+.otp-input::placeholder {
+    color: var(--color-text-tertiary);
+}
+
 @media (max-width: 640px) {
     .login-card {
         padding: 32px 24px;

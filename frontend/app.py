@@ -111,15 +111,45 @@ def login():
             username = request.form.get("username")
             password = request.form.get("password")
             if check_password(username, password):
-                user = User(username)
-                login_user(user)
-                session['username'] = username  # Stocke le nom d'utilisateur dans la session
-                return redirect(url_for('index'))
+                is_2fa_enabled_flag = is_2fa_enabled(username)
+                if is_2fa_enabled_flag:
+                    # SI 2FA : STOCKAGE TEMPORAIRE DANS LA SESSION
+                    # On ne connecte pas encore l'utilisateur, on le met "en attente"
+                    session['pre_2fa_user'] = username
+                    return redirect(url_for('two_fa'))
+                else :
+                    user = User(username)
+                    login_user(user)
+                    session['username'] = username  # Stocke le nom d'utilisateur dans la session
+                    session.pop('pre_2fa_user', None) # Nettoyage de sécurité
+                    return redirect(url_for('index'))
             else:
                 context["erreur"] = "Nom d'utilisateur ou mot de passe incorrect."
             
     return render_template('login.html', **context)
 
+@app.route('/two_fa', methods=["GET", "POST"])
+def two_fa():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    context = {}
+    context["version"] = app.config["APP_VERSION"]
+    username = session.get('pre_2fa_user')
+    if not username:
+        return redirect(url_for('login'))
+    context["username"] = username
+    if request.method == "POST":
+        if request.form.get("action")=="loginUser":
+            code_2fa = request.form.get("2fa_code")
+            if verify_2fa_token(username, code_2fa):
+                # Code 2FA correct, on connecte l'utilisateur
+                login_user(User(username))
+                session.pop('pre_2fa_user', None) # Nettoyage de sécurité
+                return redirect(url_for('index'))
+            else:
+                context["erreur"] = "Code 2FA incorrect. Veuillez réessayer."
+                return render_template('login_a2f.html',  **context)
+    return render_template('login_a2f.html', **context)
 
 @app.route('/')
 @login_required
