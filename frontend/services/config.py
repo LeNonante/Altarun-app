@@ -2,6 +2,10 @@ import os
 from dotenv import load_dotenv, set_key, dotenv_values
 import subprocess
 import requests
+import io
+import base64
+import qrcode
+import pyotp
 BASE_URL = "http://192.168.1.12:5000"
 
 def isThereASecretKey() :
@@ -71,6 +75,25 @@ def verify_2fa_token(username, token):
     if r.status_code == 200:
         return r.json().get("valid", False)
     return False
+
+def create_qr_code(username, secret_key):
+    # On prépare les infos pour Google Authenticator
+    totp_auth = pyotp.TOTP(secret_key)
+    
+    # Création de l'URI (le lien qui contient la clé, le nom de l'app, et l'user)
+    uri = totp_auth.provisioning_uri( 
+        name=username,
+        issuer_name="Altarun"
+    )
+    
+    img = qrcode.make(uri)
+    # 1. On crée un tampon mémoire (comme un fichier virtuel)
+    buffer = io.BytesIO()
+    # 2. On sauvegarde l'image dans ce tampon au format PNG
+    img.save(buffer, format="PNG")
+    # 3. On récupère les bytes, on encode en base64, et on decode en string utf-8
+    img_str = base64.b64encode(buffer.getvalue()).decode("utf-8")
+    return img_str
 
 
 def update_strava_connection(username, access_token, expires_at, refresh_token):

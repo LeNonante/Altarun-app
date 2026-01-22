@@ -54,6 +54,7 @@ def settings():
     context["message"] = request.args.get('message')
     
     context["is_strava_connected"] = is_strava_connected
+    context["is_2fa_enabled"] = infos.get("is_2fa_enabled", False)
     if infos:
         context["first_name"] = infos.get("first_name", "")
         context["last_name"] = infos.get("last_name", "")
@@ -90,6 +91,22 @@ def settings():
                     context["message_password"] = "Mot de passe mis à jour avec succès."
                 else:
                     context["error_password"] = "Échec de la mise à jour du mot de passe."
+        if request.form.get("action") == "toggle_2fa":
+            enable_flag = request.form.get("enable_2fa") == "true"
+            if enable_flag:
+                secret = enable_2fa(current_user.id)
+                if secret:
+                    context["is_2fa_enabled"] = True
+                    context["img_qr_code"] = create_qr_code(current_user.id, secret)
+                    context["secret_2fa"] = secret
+                else:
+                    context["error"] = "Impossible d'activer la 2FA pour le moment."
+            else:
+                if disable_2fa(current_user.id):
+                    context["is_2fa_enabled"] = False
+                    context["message"] = "2FA désactivée."
+                else:
+                    context["error"] = "Impossible de désactiver la 2FA pour le moment."
         if request.form.get("action") == "disconnect_strava":
             if disconnect_strava(current_user.id):
                 context["is_strava_connected"] = False

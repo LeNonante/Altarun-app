@@ -77,6 +77,7 @@ def get_user(username):
         'last_name': user.last_name,
         'email': user.email,
         'is_strava_connected': user.is_strava_connected,
+        'is_2fa_enabled': user.is_2fa_enabled,
         'clubs': [{
         'id': c.id, 'name': c.name, 'admin': c.admin.username, 'members_count': c.members.count(), 'teams_count': len(c.teams), 'code': c.code, "is_private": c.is_private
         } for c in user.clubs]

@@ -237,6 +237,27 @@
     font-weight: 800;
 }
 
+/* Success message with QR: stack items vertically */
+.success-message {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.success-message.has-qr {
+    align-items: flex-start;
+}
+
+.success-message .success-content {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.success-message .success-content img {
+    align-self: center;
+}
+
 
 
 /* Password Hint */

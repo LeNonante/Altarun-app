@@ -76,6 +76,19 @@
                     {% if message %}
                         <div class="success-message">{{ message }}</div>
                     {% endif %}
+
+                    {% if img_qr_code %}
+                    <div class="success-message has-qr">
+                        <div class="success-content">
+                            <span>2FA activée.<br>Scannez le QR Code ci-dessous depuis une application d'authentification (comme Google Authenticator) ou notez le token, ils ne seront plus affichés.</span>
+                            <div style="text-align: center; margin-bottom: 24px; padding: 16px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                                <img src="data:image/png;base64,{{ img_qr_code }}" alt="QR Code 2FA" style="max-width: 200px; border-radius: 8px; border: 4px solid white;">
+                            </div>
+                            <span>Token : <strong>{{ secret_2fa }}</strong></span>
+                        </div>
+                    </div>
+                    {% endif %}
+
                     <div class="profile-header">
                         <div class="profile-picture-upload">
                             <img src="{{ url_for('profile_picture', username=current_user.id) }}" alt="Profile Picture" class="profile-picture" id="preview-image">
@@ -173,17 +186,25 @@
                             <h3>Authentification à deux facteurs</h3>
                         </div>
                         <p class="card-description">Ajoutez une couche supplémentaire de sécurité à votre compte. Nous vous demanderons un code chaque fois que vous vous connecterez.</p>
-                        
-                        <div class="toggle-container">
-                            <div class="toggle-info">
-                                <span class="toggle-label">Protection 2FA</span>
-                                <span class="toggle-status disabled">Actuellement désactivée</span>
+                        <form method="POST" action="{{ url_for('settings') }}" id="form-2fa-toggle">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <input type="hidden" name="action" value="toggle_2fa">
+                            <input type="hidden" name="enable_2fa" id="enable_2fa" value="{{ 'true' if is_2fa_enabled else 'false' }}">
+                            <div class="toggle-container">
+                                <div class="toggle-info">
+                                    <span class="toggle-label">Protection 2FA</span>
+                                    {% if is_2fa_enabled %}
+                                        <span class="toggle-status enabled">Actuellement activée</span>
+                                    {% else %}
+                                        <span class="toggle-status disabled">Actuellement désactivée</span>
+                                    {% endif %}
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="2fa-toggle" {% if is_2fa_enabled %}checked{% endif %}>
+                                    <span class="slider"></span>
+                                </label>
                             </div>
-                            <label class="toggle-switch">
-                                <input type="checkbox" id="2fa-toggle">
-                                <span class="slider"></span>
-                            </label>
-                        </div>
+                        </form>
                     </div>
 
                     <!-- Strava  -->
@@ -238,21 +259,17 @@
     </div>
 
     <script>
-        // Toggle 2FA
-        const toggle = document.getElementById('2fa-toggle');
-        const statusText = document.querySelector('.toggle-status');
-        
-        toggle.addEventListener('change', function() {
-            if (this.checked) {
-                statusText.textContent = 'Actuellement activée';
-                statusText.classList.remove('disabled');
-                statusText.classList.add('enabled');
-            } else {
-                statusText.textContent = 'Actuellement désactivée';
-                statusText.classList.remove('enabled');
-                statusText.classList.add('disabled');
-            }
-        });
+
+        // Toggle 2FA submit
+        const toggle2fa = document.getElementById('2fa-toggle');
+        const form2fa = document.getElementById('form-2fa-toggle');
+        const enable2fa = document.getElementById('enable_2fa');
+        if (toggle2fa && form2fa && enable2fa) {
+            toggle2fa.addEventListener('change', () => {
+                enable2fa.value = toggle2fa.checked ? 'true' : 'false';
+                form2fa.submit();
+            });
+        }
 
         // Profile picture preview
         const fileInput = document.getElementById('profile_picture');
