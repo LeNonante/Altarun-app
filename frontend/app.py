@@ -290,6 +290,43 @@ def signup():
                 context["erreur"] = "L'adresse e-mail est déjà utilisée."
     return render_template('signup.html', **context)
 
+
+@app.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    context = {"version": app.config["APP_VERSION"]}
+    
+    if request.method == 'POST':
+        email = request.form.get('email')
+        request_password_reset(email)
+        # On affiche le message quoi qu'il arrive
+        context["message"] = "Si un compte est associé à cet email, vous recevrez un lien de réinitialisation."
+        
+    return render_template('forgot_password.html', **context)
+
+@app.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password_view(token):
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    context = {"version": app.config["APP_VERSION"]}
+    
+    if request.method == 'POST':
+        password = request.form.get('password')
+        confirm = request.form.get('confirm_password')
+        
+        if password != confirm:
+            context["erreur"] = "Les mots de passe ne correspondent pas."
+        else:
+            success, msg = reset_password_with_token(token, password)
+            if success:
+                return redirect(url_for('login', message="Mot de passe réinitialisé. Connectez-vous."))
+            else:
+                context["erreur"] = msg
+                
+    return render_template('reset_password.html', **context)
+
+
 @app.route('/exchange_token')
 @login_required
 def exchange_token():

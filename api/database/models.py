@@ -30,6 +30,9 @@ class User(db.Model):
     strava_expires_at = db.Column(db.Integer) # Timestamp d'expiration du token d'accès
     strava_refresh_token = db.Column(db.String(200))
     email = db.Column(db.String(120), unique=True, nullable=False)
+    # Champs pour le reset de mot de passe
+    reset_token = db.Column(db.String(100), nullable=True)
+    reset_token_expiration = db.Column(db.DateTime, nullable=True)
     
     # Relations d'administration
     managed_clubs = db.relationship('Club', backref='admin', lazy=True)

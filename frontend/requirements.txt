@@ -1,1 +1,5 @@
 pyotp
+gunicorn
+flask_sqlalchemy
+flask
+python-dotenv

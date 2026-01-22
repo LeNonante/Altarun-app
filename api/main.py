@@ -3,15 +3,32 @@ import io
 import os
 from database.extensions import db
 from database.models import User, Club, Team  # Importer les modèles pour qu'ils soient enregistrés
+from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
 import random
 import pyotp
+from flask_mail import Mail, Message
+import secrets
+from datetime import datetime, timedelta
+
+load_dotenv()
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 app = Flask(__name__)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'instance', 'Altarun-api.db') # Le fichier sera créé dansu n dossier instance/
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False # Pour économiser de la mémoire
+
+# Configuration de Flask-Mail
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
+app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_USERNAME')
+app.config['FRONTEND_URL'] = os.getenv('APP_URL')
+
+mail = Mail(app)
 
 db.init_app(app)
 
@@ -169,6 +186,55 @@ def authenticate():
     if user and check_password_hash(user.password_hash, data['password']):
         return {'message': 'Authentication successful'}, 200
     return {'message': 'Invalid credentials'}, 401
+
+@app.route('/auth/request-reset', methods=['POST'])
+def request_reset_password():
+    data = request.get_json()
+    email = data.get('email')
+    user = User.query.filter_by(email=email).first()
+    
+    if user:
+        # Générer un token sécurisé
+        token = secrets.token_urlsafe(32)
+        user.reset_token = token
+        # Le lien expire dans 1 heure
+        user.reset_token_expiration = datetime.utcnow() + timedelta(hours=1)
+        db.session.commit()
+        
+        # Envoyer l'email
+        reset_link = f"{app.config['FRONTEND_URL']}/reset-password/{token}"
+        msg = Message("Réinitialisation de votre mot de passe Altarun",
+                      recipients=[email], )
+        msg.body = f"Bonjour {user.username},\n\nPour réinitialiser votre mot de passe, cliquez sur le lien suivant :\n{reset_link}\n\nCe lien expire dans 1 heure.\n\nSi vous n'avez pas demandé ceci, ignorez cet e-mail."
+        
+        try:
+            mail.send(msg)
+            print(f"Sent password reset email to {email}")
+        except Exception as e:
+            print(f"Failed to send email: {e}")
+            return {'error': str(e)}, 500
+
+    # On retourne toujours un succès pour ne pas révéler si l'email existe ou non (sécurité)
+    return {'message': 'Si cet email existe, un lien a été envoyé.'}, 200
+
+@app.route('/auth/reset-password', methods=['POST'])
+def reset_password():
+    data = request.get_json()
+    token = data.get('token')
+    new_password = data.get('new_password')
+    
+    user = User.query.filter_by(reset_token=token).first()
+    
+    if not user or user.reset_token_expiration < datetime.utcnow():
+        return {'error': 'Jeton invalide ou expiré'}, 400
+        
+    # Mise à jour du mot de passe
+    user.password_hash = generate_password_hash(new_password)
+    user.reset_token = None
+    user.reset_token_expiration = None
+    db.session.commit()
+    
+    return {'message': 'Mot de passe mis à jour avec succès'}, 200
 
 @app.route('/users/<username>/2fa/status', methods=['GET'])
 def check_2fa(username):

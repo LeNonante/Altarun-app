@@ -32,6 +32,27 @@ def check_password(username, password):
     r = requests.post(f"{BASE_URL}/auth", json={"username": username, "password": password})
     return r.status_code == 200
 
+def request_password_reset(email):
+    try:
+        r = requests.post(f"{BASE_URL}/auth/request-reset", json={"email": email})
+        return r.status_code == 200
+    except Exception:
+        return False
+
+def reset_password_with_token(token, new_password):
+    try:
+        r = requests.post(f"{BASE_URL}/auth/reset-password", json={
+            "token": token,
+            "new_password": new_password
+        })
+        if r.status_code == 200:
+            return True, "Mot de passe modifié avec succès."
+        else:
+            return False, r.json().get('error', 'Erreur inconnue')
+    except Exception:
+        return False, "Erreur de connexion à l'API"
+
+
 def create_user(username, email, password):
     r = requests.post(f"{BASE_URL}/users", json={
         "username": username,
