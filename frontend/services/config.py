@@ -117,8 +117,9 @@ def create_qr_code(username, secret_key):
     return img_str
 
 
-def update_strava_connection(username, access_token, expires_at, refresh_token):
+def update_strava_connection(username, strava_id, access_token, expires_at, refresh_token):
     r = requests.put(f"{BASE_URL}/users/{username}/strava", json={
+        "strava_id": strava_id,
         "access_token": access_token,
         "expires_at": expires_at,
         "refresh_token": refresh_token

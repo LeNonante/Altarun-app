@@ -159,6 +159,7 @@ def update_user_strava(username):
     if request.method == 'GET':
         return {
             'is_strava_connected': user.is_strava_connected,
+            'strava_id': user.strava_id,
             'strava_access_token': user.strava_access_token,
             'strava_expires_at': user.strava_expires_at,
             'strava_refresh_token': user.strava_refresh_token
@@ -168,11 +169,13 @@ def update_user_strava(username):
         user.strava_access_token = None
         user.strava_expires_at = None
         user.strava_refresh_token = None
+        user.strava_id = None
         db.session.commit()
         return {'message': 'Strava disconnected successfully'}, 200
     if request.method == 'PUT':
         data = request.get_json()
         user.is_strava_connected = True
+        user.strava_id = data.get('strava_id', user.strava_id)
         user.strava_access_token = data.get('access_token', user.strava_access_token)
         user.strava_expires_at = data.get('expires_at', user.strava_expires_at)
         user.strava_refresh_token = data.get('refresh_token', user.strava_refresh_token)

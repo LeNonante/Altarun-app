@@ -347,12 +347,13 @@ def exchange_token():
     data = token_response.json()
     access_token = data.get('access_token')
     refresh_token = data.get('refresh_token')
+    strava_id = data.get('athlete', {}).get('id')
     expires_at = data.get('expires_at')
     
     if not access_token or not refresh_token:
         return redirect(url_for('settings', error="Erreur lors de l'échange du token avec Strava."))
 
-    r = update_strava_connection(current_user.id, access_token, expires_at, refresh_token)
+    r = update_strava_connection(current_user.id, strava_id,access_token, expires_at, refresh_token)
     if r:
         return redirect(url_for('settings', message="Connexion à Strava réussie !"))
     else:
