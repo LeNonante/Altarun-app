@@ -151,6 +151,33 @@ def update_user_password(username):
     db.session.commit()
     return {'message': 'Password updated successfully'}, 200
 
+@app.route('/etl/stravausers', methods=['GET', 'PUT'])
+def list_strava_users():
+    if request.method == 'PUT':
+        data = request.get_json()
+        print(data)
+        username = data.get('username')
+        user = User.query.filter_by(username=username).first()
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        user.is_strava_connected = data.get('is_strava_connected', user.is_strava_connected)
+        user.strava_id = data.get('strava_id', user.strava_id)
+        user.strava_access_token = data.get('access_token', user.strava_access_token)
+        user.strava_expires_at = data.get('expires_at', user.strava_expires_at)
+        user.strava_refresh_token = data.get('refresh_token', user.strava_refresh_token)
+        db.session.commit()
+        return {'message': 'Strava data updated successfully'}, 200
+    
+    users = User.query.filter_by(is_strava_connected=True).all()
+    return jsonify([{
+        'username': u.username,
+        'strava_id': u.strava_id,
+        'access_token': u.strava_access_token,
+        'expires_at': u.strava_expires_at,
+        'refresh_token': u.strava_refresh_token
+    } for u in users])
+    
+
 @app.route('/users/<username>/strava', methods=['GET', 'PUT', 'DELETE'])
 def update_user_strava(username):
     user = User.query.filter_by(username=username).first()
