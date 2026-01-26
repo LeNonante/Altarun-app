@@ -15,7 +15,8 @@ load_dotenv()
 CLIENT_ID = os.getenv("STRAVA_CLIENT_ID")
 CLIENT_SECRET = os.getenv("STRAVA_CLIENT_SECRET")
 URL=os.getenv("APP_URL")
-URL_LOGIN_STRAVA = f"https://www.strava.com/oauth/authorize?client_id={CLIENT_ID}&response_type=code&redirect_uri={URL}/exchange_token&approval_prompt=force&scope=read,activity:read_all"
+URL_PUBLIC=os.getenv("APP_PUBLIC_URL")
+URL_LOGIN_STRAVA = f"https://www.strava.com/oauth/authorize?client_id={CLIENT_ID}&response_type=code&redirect_uri={URL_PUBLIC}/exchange_token&approval_prompt=force&scope=read,activity:read_all"
 
 API_KEY = os.environ.get("API_TOKEN")
 
