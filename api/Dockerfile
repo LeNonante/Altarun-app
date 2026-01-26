@@ -10,6 +10,10 @@ COPY requirements.txt .
 # 4. On installe les librairies nécessaires DANS le conteneur
 RUN pip install -r requirements.txt
 
+#CAR API DERRIERE TUNNEL SSL :
+# Baisse le niveau de sécurité SSL pour accepter les certificats des tunnels/dev
+RUN sed -i 's/SECLEVEL=2/SECLEVEL=1/g' /etc/ssl/openssl.cnf
+
 # 5. On copie tout le reste de votre code (le script python) dans le conteneur
 COPY . .
 
