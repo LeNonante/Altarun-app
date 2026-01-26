@@ -17,6 +17,7 @@ CLIENT_SECRET = os.getenv("STRAVA_CLIENT_SECRET")
 URL=os.getenv("APP_URL")
 URL_LOGIN_STRAVA = f"https://www.strava.com/oauth/authorize?client_id={CLIENT_ID}&response_type=code&redirect_uri={URL}/exchange_token&approval_prompt=force&scope=read,activity:read_all"
 
+API_KEY = os.environ.get("API_TOKEN")
 
 #Gestion de la clef secrete pour les sessions
 if not isThereASecretKey(): #Si pas de clef secrete (utilisée pour les sessions)
@@ -365,10 +366,15 @@ def exchange_token():
 def profile_picture(username):
     # Le frontend demande l'image à l'API
     api_url = f"{BASE_URL}/users/{username}/photo"
+
+    # C'est ici que ça change : format standard
+    HEADERS = {
+        "Authorization": f"Bearer {API_KEY}"
+    }
     
     try:
         # On récupère l'image depuis l'API (stream=True est important pour la mémoire)
-        resp = requests.get(api_url, stream=True)
+        resp = requests.get(api_url, stream=True, headers=HEADERS)
         
         if resp.status_code == 200:
             # On renvoie l'image au navigateur exactement comme on l'a reçue

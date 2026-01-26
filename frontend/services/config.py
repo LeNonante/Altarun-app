@@ -6,7 +6,17 @@ import io
 import base64
 import qrcode
 import pyotp
-BASE_URL = "http://192.168.1.12:5000"
+
+load_dotenv()
+BASE_URL = os.environ.get("API_URL")
+
+API_KEY = os.environ.get("API_TOKEN")
+
+# C'est ici que ça change : format standard
+HEADERS = {
+    "Authorization": f"Bearer {API_KEY}"
+}
+
 
 def isThereASecretKey() :
     return os.getenv("SECRET_KEY_FRONT") is not None
@@ -29,12 +39,12 @@ def get_git_version():
         return "unknown"
 
 def check_password(username, password):
-    r = requests.post(f"{BASE_URL}/auth", json={"username": username, "password": password})
+    r = requests.post(f"{BASE_URL}/auth", json={"username": username, "password": password}, headers=HEADERS)
     return r.status_code == 200
 
 def request_password_reset(email):
     try:
-        r = requests.post(f"{BASE_URL}/auth/request-reset", json={"email": email})
+        r = requests.post(f"{BASE_URL}/auth/request-reset", json={"email": email}, headers=HEADERS)
         return r.status_code == 200
     except Exception:
         return False
@@ -44,7 +54,7 @@ def reset_password_with_token(token, new_password):
         r = requests.post(f"{BASE_URL}/auth/reset-password", json={
             "token": token,
             "new_password": new_password
-        })
+        }, headers=HEADERS)
         if r.status_code == 200:
             return True, "Mot de passe modifié avec succès."
         else:
@@ -58,11 +68,11 @@ def create_user(username, email, password):
         "username": username,
         "email": email,
         "password": password
-    })
+    }, headers=HEADERS)
     return r.status_code == 201
 
 def get_profile_info(username):
-    r = requests.get(f"{BASE_URL}/users/{username}")
+    r = requests.get(f"{BASE_URL}/users/{username}", headers=HEADERS)
     if r.status_code == 200:
         return r.json()
     return None
@@ -72,27 +82,27 @@ def update_profile_info(username, first_name, last_name, email):
         "first_name": first_name,
         "last_name": last_name,
         "email": email
-    })
+    }, headers=HEADERS)
     return r.status_code == 200
 
 def enable_2fa(username):
-    r = requests.post(f"{BASE_URL}/users/{username}/2fa/enable")
+    r = requests.post(f"{BASE_URL}/users/{username}/2fa/enable", headers=HEADERS)
     if r.status_code == 200:
         return r.json().get("secret")
     return None
 
 def disable_2fa(username):
-    r = requests.post(f"{BASE_URL}/users/{username}/2fa/disable")
+    r = requests.post(f"{BASE_URL}/users/{username}/2fa/disable", headers=HEADERS)
     return r.status_code == 200
 
 def is_2fa_enabled(username):
-    r = requests.get(f"{BASE_URL}/users/{username}/2fa/status")
+    r = requests.get(f"{BASE_URL}/users/{username}/2fa/status", headers=HEADERS)
     if r.status_code == 200:
         return r.json().get("is_2fa_enabled", False)
     return False
 
 def verify_2fa_token(username, token):
-    r = requests.post(f"{BASE_URL}/users/{username}/2fa/verify", json={"token": token})
+    r = requests.post(f"{BASE_URL}/users/{username}/2fa/verify", json={"token": token}, headers=HEADERS)
     if r.status_code == 200:
         return r.json().get("valid", False)
     return False
@@ -123,40 +133,40 @@ def update_strava_connection(username, strava_id, access_token, expires_at, refr
         "access_token": access_token,
         "expires_at": expires_at,
         "refresh_token": refresh_token
-    })
+    }, headers=HEADERS)
     return r.status_code == 200
 
 def get_strava_connection(username):
-    r = requests.get(f"{BASE_URL}/users/{username}/strava")
+    r = requests.get(f"{BASE_URL}/users/{username}/strava", headers=HEADERS)
     if r.status_code == 200:
         return r.json()
     return None
 
 def disconnect_strava(username):
-    r = requests.delete(f"{BASE_URL}/users/{username}/strava")
+    r = requests.delete(f"{BASE_URL}/users/{username}/strava", headers=HEADERS)
     return r.status_code == 200
 
 def update_profile_picture(username, file_storage):
     # On prépare le fichier pour l'envoi via requests
     files = {'photo': (file_storage.filename, file_storage.stream, file_storage.mimetype)}
     try:
-        r = requests.post(f"{BASE_URL}/users/{username}/photo", files=files)
+        r = requests.post(f"{BASE_URL}/users/{username}/photo", files=files, headers=HEADERS)
         return r.status_code == 200
     except Exception:
         return False
 
 def update_password(username, current_password, new_password):
     # Authentifier l'utilisateur avec le mot de passe actuel
-    auth_response = requests.post(f"{BASE_URL}/auth", json={"username": username, "password": current_password})
+    auth_response = requests.post(f"{BASE_URL}/auth", json={"username": username, "password": current_password}, headers=HEADERS)
     if auth_response.status_code != 200:
         return False  # Mot de passe actuel incorrect
 
     # Mettre à jour le mot de passe
-    r = requests.put(f"{BASE_URL}/users/{username}/password", json={"new_password": new_password})
+    r = requests.put(f"{BASE_URL}/users/{username}/password", json={"new_password": new_password}, headers=HEADERS)
     return r.status_code == 200
 
 def check_email_availability(email):
-    r = requests.get(f"{BASE_URL}/check_email", params={"email": email})
+    r = requests.get(f"{BASE_URL}/check_email", params={"email": email}, headers=HEADERS)
     if r.status_code == 200:
         data = r.json()
         return data.get("available", False)
@@ -164,7 +174,7 @@ def check_email_availability(email):
 
 def list_clubs():
     try:
-        r = requests.get(f"{BASE_URL}/clubs")
+        r = requests.get(f"{BASE_URL}/clubs", headers=HEADERS)
         if r.status_code == 200:
             return r.json()
     except Exception:
@@ -174,7 +184,7 @@ def list_clubs():
 def get_club_details(club_id):
     if club_id is None:
         return 404
-    r = requests.get(f"{BASE_URL}/clubs/{club_id}")
+    r = requests.get(f"{BASE_URL}/clubs/{club_id}", headers=HEADERS)
     if r.status_code == 200:
         return r.json()
     return None
@@ -187,7 +197,7 @@ def get_club_id_by_code(club_code):
 def check_club_password(club_id, password):
     """Vérifie le mot de passe du club via l'API"""
     try:
-        r = requests.post(f"{BASE_URL}/clubs/auth", json={"id": club_id, "password": password})
+        r = requests.post(f"{BASE_URL}/clubs/auth", json={"id": club_id, "password": password}, headers=HEADERS)
         return r.status_code == 200
     except Exception:
         return False
@@ -202,7 +212,7 @@ def join_club(username, club_id):
     if club_id is None:
         return 404
     
-    r = requests.post(f"{BASE_URL}/clubs/{club_id}/join", json={"user_id": user_id})
+    r = requests.post(f"{BASE_URL}/clubs/{club_id}/join", json={"user_id": user_id}, headers=HEADERS)
     return r.status_code
 
 def create_club(username, club_name):
@@ -216,7 +226,7 @@ def create_club(username, club_name):
         r = requests.post(f"{BASE_URL}/clubs", json={
             "name": club_name, 
             "user_id": user_id
-        })
+        }, headers=HEADERS)
         return r.status_code == 201
     except Exception:
         return False

@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file, abort
 import io
 import os
 from database.extensions import db
@@ -15,6 +15,7 @@ load_dotenv()
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 app = Flask(__name__)
+API_SECRET_KEY = os.environ.get("API_TOKEN")
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'instance', 'Altarun-api.db') # Le fichier sera créé dansu n dossier instance/
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False # Pour économiser de la mémoire
@@ -38,6 +39,24 @@ with app.app_context():
     if not os.path.exists(os.path.join(basedir, 'instance')):
         os.makedirs(os.path.join(basedir, 'instance'))
     db.create_all()
+
+
+@app.before_request # Vérification de la clé API avant chaque requête
+def check_api_key():        
+    # On récupère la clé dans les headers
+    auth_header = request.headers.get('Authorization')
+    
+    if auth_header and auth_header.startswith('Bearer '):
+        # On coupe la chaîne pour garder juste le token après l'espace
+        token = auth_header.split(" ")[1]
+        
+        # 3. Vérifier si le token correspond à notre secret
+        if token == API_SECRET_KEY:
+            return  # C'est validé, on laisse passer
+            
+    # Si on arrive ici, c'est que l'auth a échoué
+    abort(401, description="Accès refusé : Token Bearer invalide ou manquant")
+
 
 @app.route('/users', methods=['GET', 'POST'])
 def get_users():
