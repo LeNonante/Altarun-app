@@ -1,9 +1,18 @@
+networks:
+  local-network:
+    external: true
+    name: docker-stack_local-network
+
 services:
   altarun_API:
     build: ./api
     container_name: altarun_API
+    restart: unless-stopped
     env_file:
       - api/.env
+    networks:
+      local-network:
+        ipv4_address: 172.20.10.1
     logging:
       driver: "json-file"
       options:
@@ -13,8 +22,12 @@ services:
   altarun_APP:
     build: ./frontend
     container_name: altarun_APP
+    restart: unless-stopped
     env_file:
       - frontend/.env
+    networks:
+      local-network:
+        ipv4_address: 172.20.10.2
     logging:
       driver: "json-file"
       options:
