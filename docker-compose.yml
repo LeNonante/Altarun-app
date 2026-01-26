@@ -4,9 +4,9 @@ networks:
     name: docker-stack_local-network
 
 services:
-  altarun_API:
+  altarun_api:
     build: ./api
-    container_name: altarun_API
+    container_name: altarun_api
     restart: unless-stopped
     env_file:
       - api/.env
@@ -19,9 +19,9 @@ services:
         max-size: "10m" #On fait des fichiers de logs de 10mo
         max-file: "3" #On conserve que 3 fichiers de logs
     
-  altarun_APP:
+  altarun_app:
     build: ./frontend
-    container_name: altarun_APP
+    container_name: altarun_app
     restart: unless-stopped
     env_file:
       - frontend/.env
