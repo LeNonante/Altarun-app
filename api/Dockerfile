@@ -1,5 +1,5 @@
-# 1. Python déjà installé
-FROM python:3.10-slim
+# 1. Python déjà installé. On utilise la version "slim-bullseye" pour compatibilité avec OpenSSL
+FROM python:3.10-slim-bullseye
 
 # 2. On crée un dossier de travail dans le conteneur (comme un "cd /app")
 WORKDIR /app
@@ -9,10 +9,6 @@ COPY requirements.txt .
 
 # 4. On installe les librairies nécessaires DANS le conteneur
 RUN pip install -r requirements.txt
-
-#CAR API DERRIERE TUNNEL SSL :
-# Baisse le niveau de sécurité SSL pour accepter les certificats des tunnels/dev
-RUN sed -i 's/SECLEVEL=2/SECLEVEL=1/g' /etc/ssl/openssl.cnf
 
 # 5. On copie tout le reste de votre code (le script python) dans le conteneur
 COPY . .
