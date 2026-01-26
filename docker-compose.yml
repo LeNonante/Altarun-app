@@ -1,0 +1,22 @@
+services:
+  altarun_API:
+    build: ./api
+    container_name: altarun_API
+    env_file:
+      - api/.env
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m" #On fait des fichiers de logs de 10mo
+        max-file: "3" #On conserve que 3 fichiers de logs
+    
+  altarun_APP:
+    build: ./frontend
+    container_name: altarun_APP
+    env_file:
+      - frontend/.env
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m" #On fait des fichiers de logs de 10mo
+        max-file: "3" #On conserve que 3 fichiers de logs
