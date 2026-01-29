@@ -25,6 +25,8 @@ class User(db.Model):
     is_2fa_enabled = db.Column(db.Boolean, default=False)
     two_fa_secret = db.Column(db.String(100))
     photo = db.Column(db.LargeBinary)
+    is_admin = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_strava_connected = db.Column(db.Boolean, default=False)
     strava_id = db.Column(db.BigInteger, unique=True)
     strava_access_token = db.Column(db.String(100))
