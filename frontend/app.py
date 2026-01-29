@@ -49,6 +49,7 @@ def settings():
     context["version"] = app.config["APP_VERSION"]
     context["strava_login_url"] = URL_LOGIN_STRAVA
     infos = get_profile_info(current_user.id)
+    context["is_admin"] = infos.get("is_admin", False)
     is_strava_connected = infos.get("is_strava_connected", False)
     
     # Récupérer les messages d'erreur et de succès
@@ -176,6 +177,7 @@ def index():
     context = {}
     context["version"] = app.config["APP_VERSION"]
     infos = get_profile_info(current_user.id)
+    context["is_admin"] = infos.get("is_admin", False)
     context["is_strava_connected"] = infos.get("is_strava_connected", False)
     context["strava_login_url"] = URL_LOGIN_STRAVA
     return render_template('index.html', **context)
@@ -192,6 +194,8 @@ def clubs():
     context["active_members"] = sum(c.get("members_count", 0) for c in clubs)
     context["is_strava_connected"] = infos.get("is_strava_connected", False)
     context["strava_login_url"] = URL_LOGIN_STRAVA
+    
+    context["is_admin"] = infos.get("is_admin", False)
     
     if request.method=="POST":
         action = request.form.get("action")
@@ -252,6 +256,7 @@ def coach():
     context = {}
     context["version"] = app.config["APP_VERSION"]
     infos = get_profile_info(current_user.id)
+    context["is_admin"] = infos.get("is_admin", False)
     context["is_strava_connected"] = infos.get("is_strava_connected", False)
     context["strava_login_url"] = URL_LOGIN_STRAVA
     return render_template('coach.html', **context)
