@@ -361,6 +361,17 @@ def exchange_token():
     else:
         return redirect(url_for('settings', error="Échec de la connexion à Strava dans votre profil."))
 
+@app.route('/admin')
+@login_required
+def admin():
+    context = {}
+    context["version"] = app.config["APP_VERSION"]
+    infos = get_profile_info(current_user.id)
+    if not infos.get("is_admin", False):
+        return redirect(url_for('index'))
+    context["is_strava_connected"] = infos.get("is_strava_connected", False)
+    context["strava_login_url"] = URL_LOGIN_STRAVA
+    return render_template('admin.html', **context)
 
 @app.route('/profile-picture/<username>')
 @login_required
