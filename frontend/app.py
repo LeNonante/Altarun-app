@@ -366,22 +366,45 @@ def exchange_token():
     else:
         return redirect(url_for('settings', error="Échec de la connexion à Strava dans votre profil."))
 
-@app.route('/admin')
+@app.route('/admin', methods=['GET', 'POST'])
 @login_required
 def admin():
     infos = get_profile_info(current_user.id)
     if not infos.get("is_admin", False):
         return redirect(url_for('index'))
-        
-    stats = get_admin_dashboard_stats() # Appel du nouveau service
     
     context = {
         "version": app.config["APP_VERSION"],
         "is_admin": True,
         "is_strava_connected": infos.get("is_strava_connected", False),
         "strava_login_url": URL_LOGIN_STRAVA,
-        "stats": stats
     }
+
+    # GESTION DES ACTIONS (POST)
+    if request.method == 'POST':
+        action = request.form.get('action')
+        target_user_id = request.form.get('user_id')
+        
+        if action == 'promote':
+            if update_user_role(target_user_id, True):
+                context["message"] = "Utilisateur promu Administrateur avec succès."
+            else:
+                context["error"] = "Erreur lors de la promotion."
+                
+        elif action == 'demote':
+            # Sécurité : on empêche de se rétrograder soi-même
+            if str(infos.get('id')) == str(target_user_id):
+                context["error"] = "Vous ne pouvez pas retirer vos propres droits d'admin."
+            else:
+                if update_user_role(target_user_id, False):
+                    context["message"] = "Droits d'administrateur retirés."
+                else:
+                    context["error"] = "Erreur lors de la modification."
+
+    # CHARGEMENT DES DONNÉES
+    context["stats"] = get_admin_dashboard_stats()
+    context["users"] = get_users_list() # On récupère la liste des users
+    
     return render_template('admin.html', **context)
 
 @app.route('/profile-picture/<username>')

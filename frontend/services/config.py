@@ -239,3 +239,23 @@ def get_admin_dashboard_stats():
     except Exception:
         pass
     return None
+
+def get_users_list():
+    """Récupère la liste de tous les utilisateurs pour l'admin"""
+    try:
+        r = requests.get(f"{BASE_URL}/admin/users", headers=HEADERS)
+        if r.status_code == 200:
+            return r.json()
+    except Exception:
+        pass
+    return []
+
+def update_user_role(user_id, is_admin):
+    """Change le statut admin d'un utilisateur"""
+    try:
+        r = requests.put(f"{BASE_URL}/admin/users/{user_id}/role", 
+                         json={"is_admin": is_admin}, 
+                         headers=HEADERS)
+        return r.status_code == 200
+    except Exception:
+        return False

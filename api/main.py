@@ -505,5 +505,31 @@ def get_admin_stats():
         'new_users_week': new_users_week
     }), 200
 
+@app.route('/admin/users', methods=['GET'])
+def get_all_users_admin():
+    # Récupère tous les utilisateurs pour le tableau de bord admin
+    users = User.query.all()
+    return jsonify([{
+        'id': u.id,
+        'username': u.username,
+        'email': u.email,
+        'is_admin': u.is_admin,
+        'created_at': u.created_at
+    } for u in users])
+
+@app.route('/admin/users/<int:user_id>/role', methods=['PUT'])
+def update_user_role(user_id):
+    data = request.get_json()
+    user = User.query.get_or_404(user_id)
+    
+    # On met à jour le statut admin
+    if 'is_admin' in data:
+        user.is_admin = data['is_admin']
+        db.session.commit()
+        return {'message': f'Rôle mis à jour pour {user.username}'}, 200
+    
+    return {'error': 'Données manquantes'}, 400
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)
