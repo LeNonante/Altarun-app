@@ -369,13 +369,19 @@ def exchange_token():
 @app.route('/admin')
 @login_required
 def admin():
-    context = {}
-    context["version"] = app.config["APP_VERSION"]
     infos = get_profile_info(current_user.id)
     if not infos.get("is_admin", False):
         return redirect(url_for('index'))
-    context["is_strava_connected"] = infos.get("is_strava_connected", False)
-    context["strava_login_url"] = URL_LOGIN_STRAVA
+        
+    stats = get_admin_dashboard_stats() # Appel du nouveau service
+    
+    context = {
+        "version": app.config["APP_VERSION"],
+        "is_admin": True,
+        "is_strava_connected": infos.get("is_strava_connected", False),
+        "strava_login_url": URL_LOGIN_STRAVA,
+        "stats": stats
+    }
     return render_template('admin.html', **context)
 
 @app.route('/profile-picture/<username>')

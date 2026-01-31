@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify, send_file, abort
 import io
 import os
 from database.extensions import db
-from database.models import User, Club, Team  # Importer les modèles pour qu'ils soient enregistrés
+from database.models import User, Club, Team, club_membership  # Importer les modèles pour qu'ils soient enregistrés
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
 import random
@@ -473,7 +473,37 @@ def add_member_to_team(club_id, team_id):
     
     return {'message': 'L utilisateur est deja dans cette equipe.'}, 200
 
-
+@app.route('/admin/stats', methods=['GET'])
+def get_admin_stats():
+    # Statistiques de base
+    total_users = User.query.count()
+    total_clubs = Club.query.count()
+    total_teams = Team.query.count()
+    
+    # Strava
+    users_with_strava = User.query.filter_by(is_strava_connected=True).count()
+    strava_percentage = (users_with_strava / total_users * 100) if total_users > 0 else 0
+    
+    # Moyennes
+    # Nombre total d'adhésions (table de liaison club_membership)
+    total_memberships = db.session.query(club_membership).count()
+    avg_clubs_per_user = (total_memberships / total_users) if total_users > 0 else 0
+    avg_users_per_club = (total_memberships / total_clubs) if total_clubs > 0 else 0
+    
+    # Evolution (Exemple : inscrits les 7 derniers jours)
+    seven_days_ago = datetime.utcnow() - timedelta(days=7)
+    new_users_week = User.query.filter(User.created_at >= seven_days_ago).count()
+    
+    return jsonify({
+        'total_users': total_users,
+        'total_clubs': total_clubs,
+        'total_teams': total_teams,
+        'users_with_strava': users_with_strava,
+        'strava_percentage': round(strava_percentage, 1),
+        'avg_clubs_per_user': round(avg_clubs_per_user, 2),
+        'avg_users_per_club': round(avg_users_per_club, 2),
+        'new_users_week': new_users_week
+    }), 200
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)

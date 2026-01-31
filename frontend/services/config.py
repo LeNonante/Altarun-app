@@ -230,3 +230,12 @@ def create_club(username, club_name):
         return r.status_code == 201
     except Exception:
         return False
+    
+def get_admin_dashboard_stats():
+    try:
+        r = requests.get(f"{BASE_URL}/admin/stats", headers=HEADERS)
+        if r.status_code == 200:
+            return r.json()
+    except Exception:
+        pass
+    return None

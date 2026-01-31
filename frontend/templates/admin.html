@@ -75,23 +75,39 @@
             <div class="content-wrapper">
                 <h1 class="page-title">Panneau d'administration</h1>
 
-                {% if error %}
-                    <div class="error-message">{{ error }}</div>
-                {% endif %}
-                {% if message %}
-                    <div class="success-message">{{ message }}</div>
-                {% endif %}
-
-                <!-- Stats Cards -->
                 <div class="stats-row">
                     <div class="stat-card">
-                        <div class="stat-label">Total Clubs</div>
-                        <div class="stat-value">{{ total_clubs or 0 }}</div>
+                        <div class="stat-label">Utilisateurs Totaux</div>
+                        <div class="stat-value">{{ stats.total_users }}</div>
+                        <div class="club-sub">dont {{ stats.new_users_week }} cette semaine</div>
                     </div>
+
                     <div class="stat-card">
-                        <div class="stat-label">Membres Actifs</div>
-                        <div class="stat-value">{{ active_members or 0 }}</div>
+                        <div class="stat-label">Connexions Strava</div>
+                        <div class="stat-value">{{ stats.strava_percentage }}%</div>
+                        <div class="club-sub">{{ stats.users_with_strava }} athlètes connectés</div>
                     </div>
+
+                    <div class="stat-card">
+                        <div class="stat-label">Clubs / Équipes</div>
+                        <div class="stat-value">{{ stats.total_clubs }} / {{ stats.total_teams }}</div>
+                        <div class="club-sub">Moyenne: {{ stats.avg_users_per_club }} membres/club</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-label">Engagement</div>
+                        <div class="stat-value">{{ stats.avg_clubs_per_user }}</div>
+                        <div class="club-sub">Clubs rejoints par utilisateur</div>
+                    </div>
+                </div>
+
+                <div class="settings-card" style="margin-top: 24px;">
+                    <h3 style="color: white; margin-bottom: 16px;">Résumé de l'écosystème</h3>
+                    <p class="club-sub">
+                        L'application Altarun compte actuellement <strong>{{ stats.total_users }}</strong> athlètes répartis dans 
+                        <strong>{{ stats.total_clubs }}</strong> clubs. 
+                        Le taux d'adoption de Strava est de <strong>{{ stats.strava_percentage }}%</strong>.
+                    </p>
                 </div>
 
 
