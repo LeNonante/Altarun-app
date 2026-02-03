@@ -1,6 +1,7 @@
 from flask import Flask, request, session, redirect, url_for, render_template, Response
 import os
 from services.config import *
+from services.big_query_requests import *
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_wtf.csrf import CSRFProtect
 
@@ -49,6 +50,7 @@ def settings():
     context["version"] = app.config["APP_VERSION"]
     context["strava_login_url"] = URL_LOGIN_STRAVA
     infos = get_profile_info(current_user.id)
+    context["is_admin"] = infos.get("is_admin", False)
     is_strava_connected = infos.get("is_strava_connected", False)
     
     # Récupérer les messages d'erreur et de succès
@@ -176,6 +178,7 @@ def index():
     context = {}
     context["version"] = app.config["APP_VERSION"]
     infos = get_profile_info(current_user.id)
+    context["is_admin"] = infos.get("is_admin", False)
     context["is_strava_connected"] = infos.get("is_strava_connected", False)
     context["strava_login_url"] = URL_LOGIN_STRAVA
     return render_template('index.html', **context)
@@ -192,6 +195,8 @@ def clubs():
     context["active_members"] = sum(c.get("members_count", 0) for c in clubs)
     context["is_strava_connected"] = infos.get("is_strava_connected", False)
     context["strava_login_url"] = URL_LOGIN_STRAVA
+    
+    context["is_admin"] = infos.get("is_admin", False)
     
     if request.method=="POST":
         action = request.form.get("action")
@@ -252,6 +257,7 @@ def coach():
     context = {}
     context["version"] = app.config["APP_VERSION"]
     infos = get_profile_info(current_user.id)
+    context["is_admin"] = infos.get("is_admin", False)
     context["is_strava_connected"] = infos.get("is_strava_connected", False)
     context["strava_login_url"] = URL_LOGIN_STRAVA
     return render_template('coach.html', **context)
@@ -361,6 +367,46 @@ def exchange_token():
     else:
         return redirect(url_for('settings', error="Échec de la connexion à Strava dans votre profil."))
 
+@app.route('/admin', methods=['GET', 'POST'])
+@login_required
+def admin():
+    infos = get_profile_info(current_user.id)
+    if not infos.get("is_admin", False):
+        return redirect(url_for('index'))
+    
+    context = {
+        "version": app.config["APP_VERSION"],
+        "is_admin": True,
+        "is_strava_connected": infos.get("is_strava_connected", False),
+        "strava_login_url": URL_LOGIN_STRAVA,
+        "elt_executions": get_last_elt_executions(),
+    }
+    # GESTION DES ACTIONS (POST)
+    if request.method == 'POST':
+        action = request.form.get('action')
+        target_user_id = request.form.get('user_id')
+        
+        if action == 'promote':
+            if update_user_role(target_user_id, True):
+                context["message"] = "Utilisateur promu Administrateur avec succès."
+            else:
+                context["error"] = "Erreur lors de la promotion."
+                
+        elif action == 'demote':
+            # Sécurité : on empêche de se rétrograder soi-même
+            if str(infos.get('id')) == str(target_user_id):
+                context["error"] = "Vous ne pouvez pas retirer vos propres droits d'admin."
+            else:
+                if update_user_role(target_user_id, False):
+                    context["message"] = "Droits d'administrateur retirés."
+                else:
+                    context["error"] = "Erreur lors de la modification."
+
+    # CHARGEMENT DES DONNÉES
+    context["stats"] = get_admin_dashboard_stats()
+    context["users"] = get_users_list() # On récupère la liste des users
+    
+    return render_template('admin.html', **context)
 
 @app.route('/profile-picture/<username>')
 @login_required
