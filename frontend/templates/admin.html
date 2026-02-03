@@ -185,6 +185,47 @@
                         </table>
                     </div>
                 </div>
+
+                <div class="settings-card" style="margin-top: 24px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 12px;">
+                        <h3 style="color: white; margin: 0;">Monitoring ELT</h3>
+                        <div id="utc-clock" style="font-family: 'Courier New', monospace; font-weight: bold; color: #fc4c02; background: rgba(252, 76, 2, 0.1); padding: 4px 8px; border-radius: 4px;">
+                            --:--:-- UTC
+                        </div>
+                    </div>
+
+                    {% if elt_executions and elt_executions|length > 0 %}
+                        
+                        {% set last_run = elt_executions[0] %}
+                        <div style="background: rgba(255, 255, 255, 0.05); border-left: 4px solid var(--color-primary); padding: 16px; border-radius: 4px; margin-bottom: 20px;">
+                            <div style="display: flex; justify-content: space-between; align-items: start;">
+                                <div>
+                                    <h4 style="color: white; margin: 0 0 4px 0; font-size: 16px;">Dernière synchronisation</h4>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="color: white; font-weight: bold; font-size: 18px;">{{ last_run.execution_ts }}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {% if elt_executions|length > 1 %}
+                        <div>
+                            <h5 style="color: #a0a0a8; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;">Historique récent</h5>
+                            <ul style="list-style: none; padding: 0; margin: 0;">
+                                {% for run in elt_executions[1:10] %}
+                                <li style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); color: #666; font-size: 13px;">
+                                    <span>{{ run.execution_ts }}</span>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+
+                    {% else %}
+                        <p style="color: #a0a0a8; font-style: italic;">Aucune donnée d'exécution disponible.</p>
+                    {% endif %}
+                </div>
+
             </div>
         </main>
     </div>
@@ -218,6 +259,24 @@
             }       
         }
     }
+
+
+    function updateUTCClock() {
+        const now = new Date();
+        const timeString = now.toUTCString();
+        
+        const clockElement = document.getElementById('utc-clock');
+        if (clockElement) {
+            clockElement.innerText = timeString;
+        }
+    }
+    
+    // Mise à jour immédiate puis toutes les secondes
+    setInterval(updateUTCClock, 1000);
+    window.onload = function() {
+        updateUTCClock();
+        // Si vous avez d'autres fonctions au chargement, appelez-les ici
+    };
 </script>
 
 

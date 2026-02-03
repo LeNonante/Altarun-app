@@ -10,6 +10,8 @@ import pyotp
 from flask_mail import Mail, Message
 import secrets
 from datetime import datetime, timedelta
+from google.cloud import bigquery
+
 
 load_dotenv()
 
@@ -32,6 +34,11 @@ app.config['FRONTEND_URL'] = os.getenv('APP_URL')
 mail = Mail(app)
 
 db.init_app(app)
+
+GOOGLE_APPLICATION_CREDENTIALS = os.path.join(basedir, "gcp-key.json")
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = GOOGLE_APPLICATION_CREDENTIALS
+
+
 
 # Création des tables
 with app.app_context():
@@ -530,6 +537,33 @@ def update_user_role(user_id):
     
     return {'error': 'Données manquantes'}, 400
 
+
+@app.route('/bigquery-data/last-executions', methods=['GET'])
+def get_bigquery_data():
+    """
+    Permet de récupérer les 10 dernières exécutions de l'ETL Strava depuis BigQuery
+    """
+    try:
+        # Le client s'authentifie tout seul grâce à la variable d'environnement
+        client = bigquery.Client()
+
+        # REquete SQL
+        query = """
+            SELECT * FROM `dashboardstrava-grafana.strava_data.timestamp_executions_order` LIMIT 10
+        """
+        
+        query_job = client.query(query)  # Lance la requête
+        
+        results = []
+        for row in query_job:
+            # On transforme chaque ligne (Row) en dictionnaire
+            results.append(dict(row))
+
+        return jsonify(results), 200
+
+    except Exception as e:
+        print(f"Erreur BigQuery: {e}")
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)

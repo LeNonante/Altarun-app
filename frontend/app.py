@@ -1,6 +1,7 @@
 from flask import Flask, request, session, redirect, url_for, render_template, Response
 import os
 from services.config import *
+from services.big_query_requests import *
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_wtf.csrf import CSRFProtect
 
@@ -378,8 +379,8 @@ def admin():
         "is_admin": True,
         "is_strava_connected": infos.get("is_strava_connected", False),
         "strava_login_url": URL_LOGIN_STRAVA,
+        "elt_executions": get_last_elt_executions(),
     }
-
     # GESTION DES ACTIONS (POST)
     if request.method == 'POST':
         action = request.form.get('action')
