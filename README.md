@@ -12,3 +12,5 @@ Variables d'env :
 - **MAIL_PASSWORD**
 
 - **API_TOKEN**
+
+Metrre dans le dossier API : gcp-key.json

@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Altarun - Panneau d'administration</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='images/Logo.svg') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/clubs.css') }}">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <img src="{{ url_for('static', filename='images/Logo.svg') }}" alt="Altarun Logo" class="sidebar-logo">
+                <h1>Altarun</h1>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="{{ url_for('index') }}" class="nav-item">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="14" width="7" height="7"></rect>
+                        <rect x="3" y="14" width="7" height="7"></rect>
+                    </svg>
+                    <span>Dashboard</span>
+                </a>
+
+                <a href="{{ url_for('clubs') }}" class="nav-item">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    <span>Espace Clubs</span>
+                </a>
+
+                <a href="{{ url_for('coach') }}" class="nav-item">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                    <span>Mon coach IA</span>
+                </a>
+                <a href="{{ url_for('admin') }}" class="nav-item active">
+                    <svg fill="currentColor" width="18" height="18" viewBox="0 0 1920 1920" xmlns="http://www.w3.org/2000/svg">
+                        <path d="m773.596 1069.654 711.086 711.085c39.632 39.632 104.336 39.632 144.078 0l138.276-138.385c19.268-19.269 29.888-44.778 29.888-71.93 0-27.26-10.62-52.77-29.888-72.039l-698.714-698.714 11.495-32.625c63.5-178.675 18.284-380.45-115.284-514.018-123.715-123.605-305.126-171.01-471.648-128.313l272.281 272.282c32.516 32.406 50.362 75.652 50.362 121.744 0 45.982-17.846 89.227-50.362 121.744L654.48 751.17c-67.222 67.003-176.375 67.003-243.488 0L138.711 478.889c-42.589 166.522 4.707 347.934 128.313 471.648 123.714 123.715 306.22 172.325 476.027 127.218l30.545-8.101ZM1556.611 1920c-54.084 0-108.168-20.692-149.333-61.857L740.095 1190.96c-198.162 41.712-406.725-19.269-550.475-163.019C14.449 852.771-35.256 582.788 65.796 356.27l32.406-72.696 390.194 390.193c24.414 24.305 64.266 24.305 88.68 0l110.687-110.686c11.824-11.934 18.283-27.59 18.283-44.34 0-16.751-6.46-32.516-18.283-44.34L297.569 84.207 370.265 51.8C596.893-49.252 866.875.453 1041.937 175.515c155.026 155.136 212.833 385.157 151.851 594.815l650.651 650.651c39.961 39.852 61.967 92.95 61.967 149.443 0 56.383-22.006 109.482-61.967 149.334l-138.275 138.385c-41.275 41.165-95.36 61.857-149.553 61.857Z" fill-rule="evenodd"/>
+                    </svg>
+                    <span>Panneau d'administration</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <a href="{{ url_for('settings') }}" style ="text-decoration: none; color: inherit;">
+                <div class="user-profile">
+                        <img src="{{ url_for('profile_picture', username=current_user.id) }}" alt="User Avatar" class="user-avatar">
+                        <span class="user-name">{{ current_user.id }}</span>
+                </div>
+                </a>
+                <a href="{{ url_for('logout') }}" class="logout-btn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                    <span>Déconnexion</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="content-wrapper">
+                <h1 class="page-title">Panneau d'administration</h1>
+
+                <div class="stats-row">
+                    <div class="stat-card">
+                        <div class="stat-label">Utilisateurs Totaux</div>
+                        <div class="stat-value">{{ stats.total_users }}</div>
+                        <div class="club-sub">dont {{ stats.new_users_week }} cette semaine</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-label">Connexions Strava</div>
+                        <div class="stat-value">{{ stats.strava_percentage }}%</div>
+                        <div class="club-sub">{{ stats.users_with_strava }} athlètes connectés</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-label">Clubs / Équipes</div>
+                        <div class="stat-value">{{ stats.total_clubs }} / {{ stats.total_teams }}</div>
+                        <div class="club-sub">Moyenne: {{ stats.avg_users_per_club }} membres/club</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-label">Engagement</div>
+                        <div class="stat-value">{{ stats.avg_clubs_per_user }}</div>
+                        <div class="club-sub">Clubs rejoints par utilisateur</div>
+                    </div>
+                </div>
+
+                <div class="settings-card" style="margin-top: 24px;">
+                    <h3 style="color: white; margin-bottom: 16px;">Résumé de l'écosystème</h3>
+                    <p class="club-sub">
+                        L'application Altarun compte actuellement <strong>{{ stats.total_users }}</strong> athlètes répartis dans 
+                        <strong>{{ stats.total_clubs }}</strong> clubs. 
+                        Le taux d'adoption de Strava est de <strong>{{ stats.strava_percentage }}%</strong>.
+                    </p>
+                </div>
+
+                <div class="settings-card" style="margin-top: 24px;">
+                    <h3 style="color: white; margin-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 12px;">
+                        Gestion des Utilisateurs
+                    </h3>
+                    
+                    {% if message %}
+                        <div style="background: rgba(82, 196, 26, 0.15); color: #73d13d; padding: 12px; border-radius: 8px; margin-bottom: 16px;">
+                            {{ message }}
+                        </div>
+                    {% endif %}
+                    {% if error %}
+                        <div style="background: rgba(255, 77, 79, 0.15); color: #ff7875; padding: 12px; border-radius: 8px; margin-bottom: 16px;">
+                            {{ error }}
+                        </div>
+                    {% endif %}
+
+                    <div style="overflow-x: auto;">
+                        <div style="margin-bottom: 20px; position: relative;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a0a0a8" stroke-width="2" 
+                                style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%);">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                            <input type="text" id="userSearchInput" onkeyup="filterUsers()" 
+                                placeholder="Rechercher par nom ou email..." 
+                                style="width: 100%; padding: 10px 10px 10px 40px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: white; font-size: 14px; outline: none;">
+                        </div>
+
+                        <table style="width: 100%; border-collapse: collapse; color: #a0a0a8; font-size: 14px;">
+                            <thead>
+                                <tr style="text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                                    <th style="padding: 12px;">Utilisateur</th>
+                                    <th style="padding: 12px;">Email</th>
+                                    <th style="padding: 12px;">Rôle</th>
+                                    <th style="padding: 12px; text-align: right;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in users %}
+                                <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                    <td style="padding: 12px; color: white; font-weight: 500;">{{ user.username }}</td>
+                                    <td style="padding: 12px;">{{ user.email }}</td>
+                                    <td style="padding: 12px;">
+                                        {% if user.is_admin %}
+                                            <span style="background: rgba(255, 107, 53, 0.2); color: #ff6b35; padding: 4px 8px; border-radius: 4px; font-size: 12px;">Admin</span>
+                                        {% else %}
+                                            <span style="background: rgba(255, 255, 255, 0.1); color: #aaa; padding: 4px 8px; border-radius: 4px; font-size: 12px;">Membre</span>
+                                        {% endif %}
+                                    </td>
+                                    <td style="padding: 12px; text-align: right;">
+                                        <form method="POST" style="display: inline;">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <input type="hidden" name="user_id" value="{{ user.id }}">
+                                            
+                                            {% if user.is_admin %}
+                                                <button type="submit" name="action" value="demote" 
+                                                        style="background: transparent; border: 1px solid #444; color: #aaa; padding: 6px 12px; border-radius: 6px; cursor: pointer; transition: 0.3s;"
+                                                        onmouseover="this.style.borderColor='#ff4d4f'; this.style.color='#ff4d4f';"
+                                                        onmouseout="this.style.borderColor='#444'; this.style.color='#aaa';">
+                                                    Rétrograder
+                                                </button>
+                                            {% else %}
+                                                <button type="submit" name="action" value="promote" 
+                                                        style="background: #ff6b35; border: none; color: white; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                                                    Promouvoir
+                                                </button>
+                                            {% endif %}
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="settings-card" style="margin-top: 24px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 12px;">
+                        <h3 style="color: white; margin: 0;">Monitoring ELT</h3>
+                        <div id="utc-clock" style="font-family: 'Courier New', monospace; font-weight: bold; color: #fc4c02; background: rgba(252, 76, 2, 0.1); padding: 4px 8px; border-radius: 4px;">
+                            --:--:-- UTC
+                        </div>
+                    </div>
+
+                    {% if elt_executions and elt_executions|length > 0 %}
+                        
+                        {% set last_run = elt_executions[0] %}
+                        <div style="background: rgba(255, 255, 255, 0.05); border-left: 4px solid var(--color-primary); padding: 16px; border-radius: 4px; margin-bottom: 20px;">
+                            <div style="display: flex; justify-content: space-between; align-items: start;">
+                                <div>
+                                    <h4 style="color: white; margin: 0 0 4px 0; font-size: 16px;">Dernière synchronisation</h4>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="color: white; font-weight: bold; font-size: 18px;">{{ last_run.execution_ts }}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {% if elt_executions|length > 1 %}
+                        <div>
+                            <h5 style="color: #a0a0a8; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;">Historique récent</h5>
+                            <ul style="list-style: none; padding: 0; margin: 0;">
+                                {% for run in elt_executions[1:10] %}
+                                <li style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); color: #666; font-size: 13px;">
+                                    <span>{{ run.execution_ts }}</span>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+
+                    {% else %}
+                        <p style="color: #a0a0a8; font-style: italic;">Aucune donnée d'exécution disponible.</p>
+                    {% endif %}
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+<script>
+    function filterUsers() {
+        // 1. Récupérer la valeur saisie
+        var input = document.getElementById("userSearchInput");
+        var filter = input.value.toUpperCase();
+        
+        // 2. Récupérer le tableau et les lignes
+        var table = document.querySelector("table");
+        var tr = table.getElementsByTagName("tr");
+
+        // 3. Boucler sur toutes les lignes (sauf l'en-tête)
+        for (var i = 1; i < tr.length; i++) {
+            // On cible la colonne Nom (index 0) et Email (index 1)
+            var tdName = tr[i].getElementsByTagName("td")[0];
+            var tdEmail = tr[i].getElementsByTagName("td")[1];
+            
+            if (tdName || tdEmail) {
+                var txtValueName = tdName.textContent || tdName.innerText;
+                var txtValueEmail = tdEmail.textContent || tdEmail.innerText;
+                
+                // Si le texte match dans le Nom OU l'Email, on affiche
+                if (txtValueName.toUpperCase().indexOf(filter) > -1 || txtValueEmail.toUpperCase().indexOf(filter) > -1) {
+                    tr[i].style.display = "";
+                } else {
+                    tr[i].style.display = "none";
+                }
+            }       
+        }
+    }
+
+
+    function updateUTCClock() {
+        const now = new Date();
+        const timeString = now.toUTCString();
+        
+        const clockElement = document.getElementById('utc-clock');
+        if (clockElement) {
+            clockElement.innerText = timeString;
+        }
+    }
+    
+    // Mise à jour immédiate puis toutes les secondes
+    setInterval(updateUTCClock, 1000);
+    window.onload = function() {
+        updateUTCClock();
+        // Si vous avez d'autres fonctions au chargement, appelez-les ici
+    };
+</script>
+
+
+</body>
+</html>

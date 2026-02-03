@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify, send_file, abort
 import io
 import os
 from database.extensions import db
-from database.models import User, Club, Team  # Importer les modèles pour qu'ils soient enregistrés
+from database.models import User, Club, Team, club_membership  # Importer les modèles pour qu'ils soient enregistrés
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
 import random
@@ -10,6 +10,8 @@ import pyotp
 from flask_mail import Mail, Message
 import secrets
 from datetime import datetime, timedelta
+from google.cloud import bigquery
+
 
 load_dotenv()
 
@@ -32,6 +34,11 @@ app.config['FRONTEND_URL'] = os.getenv('APP_URL')
 mail = Mail(app)
 
 db.init_app(app)
+
+GOOGLE_APPLICATION_CREDENTIALS = os.path.join(basedir, "gcp-key.json")
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = GOOGLE_APPLICATION_CREDENTIALS
+
+
 
 # Création des tables
 with app.app_context():
@@ -114,6 +121,7 @@ def get_user(username):
         'email': user.email,
         'is_strava_connected': user.is_strava_connected,
         'is_2fa_enabled': user.is_2fa_enabled,
+        'is_admin': user.is_admin,
         'clubs': [{
         'id': c.id, 'name': c.name, 'admin': c.admin.username, 'members_count': c.members.count(), 'teams_count': len(c.teams), 'code': c.code, "is_private": c.is_private
         } for c in user.clubs]
@@ -472,7 +480,90 @@ def add_member_to_team(club_id, team_id):
     
     return {'message': 'L utilisateur est deja dans cette equipe.'}, 200
 
+@app.route('/admin/stats', methods=['GET'])
+def get_admin_stats():
+    # Statistiques de base
+    total_users = User.query.count()
+    total_clubs = Club.query.count()
+    total_teams = Team.query.count()
+    
+    # Strava
+    users_with_strava = User.query.filter_by(is_strava_connected=True).count()
+    strava_percentage = (users_with_strava / total_users * 100) if total_users > 0 else 0
+    
+    # Moyennes
+    # Nombre total d'adhésions (table de liaison club_membership)
+    total_memberships = db.session.query(club_membership).count()
+    avg_clubs_per_user = (total_memberships / total_users) if total_users > 0 else 0
+    avg_users_per_club = (total_memberships / total_clubs) if total_clubs > 0 else 0
+    
+    # Evolution (Exemple : inscrits les 7 derniers jours)
+    seven_days_ago = datetime.utcnow() - timedelta(days=7)
+    new_users_week = User.query.filter(User.created_at >= seven_days_ago).count()
+    
+    return jsonify({
+        'total_users': total_users,
+        'total_clubs': total_clubs,
+        'total_teams': total_teams,
+        'users_with_strava': users_with_strava,
+        'strava_percentage': round(strava_percentage, 1),
+        'avg_clubs_per_user': round(avg_clubs_per_user, 2),
+        'avg_users_per_club': round(avg_users_per_club, 2),
+        'new_users_week': new_users_week
+    }), 200
 
+@app.route('/admin/users', methods=['GET'])
+def get_all_users_admin():
+    # Récupère tous les utilisateurs pour le tableau de bord admin
+    users = User.query.all()
+    return jsonify([{
+        'id': u.id,
+        'username': u.username,
+        'email': u.email,
+        'is_admin': u.is_admin,
+        'created_at': u.created_at
+    } for u in users])
+
+@app.route('/admin/users/<int:user_id>/role', methods=['PUT'])
+def update_user_role(user_id):
+    data = request.get_json()
+    user = User.query.get_or_404(user_id)
+    
+    # On met à jour le statut admin
+    if 'is_admin' in data:
+        user.is_admin = data['is_admin']
+        db.session.commit()
+        return {'message': f'Rôle mis à jour pour {user.username}'}, 200
+    
+    return {'error': 'Données manquantes'}, 400
+
+
+@app.route('/bigquery-data/last-executions', methods=['GET'])
+def get_bigquery_data():
+    """
+    Permet de récupérer les 10 dernières exécutions de l'ETL Strava depuis BigQuery
+    """
+    try:
+        # Le client s'authentifie tout seul grâce à la variable d'environnement
+        client = bigquery.Client()
+
+        # REquete SQL
+        query = """
+            SELECT * FROM `dashboardstrava-grafana.strava_data.timestamp_executions_order` LIMIT 10
+        """
+        
+        query_job = client.query(query)  # Lance la requête
+        
+        results = []
+        for row in query_job:
+            # On transforme chaque ligne (Row) en dictionnaire
+            results.append(dict(row))
+
+        return jsonify(results), 200
+
+    except Exception as e:
+        print(f"Erreur BigQuery: {e}")
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)

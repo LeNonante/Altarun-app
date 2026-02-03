@@ -5,3 +5,4 @@ werkzeug
 flask_mail
 python-dotenv
 pyotp
+google-cloud-bigquery
