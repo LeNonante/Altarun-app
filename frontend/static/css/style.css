@@ -127,6 +127,55 @@ html, body {
     flex-shrink: 0;
 }
 
+/* --- Styles pour le menu rétractable --- */
+
+/* Réduire la largeur de la sidebar */
+.sidebar.collapsed {
+    width: 80px;
+}
+
+/* Ajuster la marge du contenu principal */
+.main-content.collapsed {
+    margin-left: 80px;
+}
+
+/* Masquer les textes (titre, liens, nom utilisateur) */
+.sidebar.collapsed .sidebar-header h1,
+.sidebar.collapsed .nav-item span,
+.sidebar.collapsed .logout-btn span,
+.sidebar.collapsed .user-name {
+    display: none;
+}
+
+/* Centrer les éléments restants (icônes) */
+.sidebar.collapsed .sidebar-header,
+.sidebar.collapsed .nav-item,
+.sidebar.collapsed .logout-btn,
+.sidebar.collapsed .user-profile {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+
+/* Style du bouton de bascule (Burger menu) */
+.toggle-btn {
+    background: none;
+    border: none;
+    color: var(--color-text-primary);
+    cursor: pointer;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.3s;
+}
+.toggle-btn:hover {
+    color: var(--color-primary);
+}
+
+
+
 .sidebar-footer {
     padding: 0 20px;
     border-top: 1px solid var(--color-border);
