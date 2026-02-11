@@ -242,7 +242,10 @@ def clubs():
                 
         elif action == "create_club":
             club_name = request.form.get("club_name")
-            if create_club(current_user.id, club_name):
+            is_private = request.form.get("is_private") == "on"
+            password = request.form.get("club_password") if is_private else None
+            
+            if create_club(current_user.id, club_name, is_private=is_private, password=password):
                 context["message"] = f"Le club '{club_name}' a été créé avec succès."
                 # On recharge la liste des clubs
                 context["clubs"] = get_profile_info(current_user.id).get("clubs", [])

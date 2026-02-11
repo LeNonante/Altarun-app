@@ -364,7 +364,7 @@ def handle_clubs():
         while Club.query.filter_by(code=''.join(code)).first() is not None: # Vérification de l'unicité
             code=random.choices('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=6)
         
-        new_club = Club(name=data['name'], admin_id=user_id, code=''.join(code))
+        new_club = Club(name=data['name'], admin_id=user_id, is_private=data.get('is_private', False), password_hash=generate_password_hash(data.get('password')) if data.get('password') else None, code=''.join(code))
         # L'admin rejoint automatiquement son club
         new_club.members.append(user)
         

@@ -215,7 +215,7 @@ def join_club(username, club_id):
     r = requests.post(f"{BASE_URL}/clubs/{club_id}/join", json={"user_id": user_id}, headers=HEADERS)
     return r.status_code
 
-def create_club(username, club_name):
+def create_club(username, club_name, is_private=False, password=None):
     profile = get_profile_info(username)
     if not profile:
         return False
@@ -225,7 +225,9 @@ def create_club(username, club_name):
     try:
         r = requests.post(f"{BASE_URL}/clubs", json={
             "name": club_name, 
-            "user_id": user_id
+            "user_id": user_id,
+            "is_private": is_private,
+            "password": password
         }, headers=HEADERS)
         return r.status_code == 201
     except Exception:

@@ -191,6 +191,15 @@
                 <div class="form-group">
                     <label for="club_name">Nom du club</label>
                     <input type="text" id="club_name" name="club_name" required placeholder="Ex: Les Coureurs du Dimanche" style="width: 100%; padding: 12px; margin-top: 8px; border-radius: 8px; border: 1px solid #444; background: #282830; color: white;">
+                    <label for="is_private" style="display: flex !important; align-items: center; gap: 10px; margin-top: 16px; margin-bottom: 0; cursor: pointer; color: #fff; font-size: 14px;">
+                        <input type="checkbox" id="is_private" name="is_private" style="width: 16px; height: 16px; accent-color: #ff6b35; cursor: pointer; flex-shrink: 0;">
+                        <span>Club privé <span style="color: #a0a0a8; font-weight: 400;">— requiert un mot de passe</span></span>
+                    </label>
+                    
+                    <div id="password_field" style="display: none; margin-top: 16px;">
+                        <label>Mot de passe du club</label>
+                        <input type="password" id="club_password" name="club_password" placeholder="••••••••" style="width: 100%; padding: 12px; margin-top: 8px; border-radius: 8px; border: 1px solid #444; background: #282830; color: white;">
+                    </div>
                 </div>
                 
                 <input type="hidden" name="action" value="create_club">
@@ -211,6 +220,25 @@
         function closeCreateModal() {
             document.getElementById('createClubModal').style.display = 'none';
         }
+        
+        // Afficher/cacher le champ de mot de passe selon la case "Club privé"
+        document.addEventListener('DOMContentLoaded', function() {
+            const isPrivateCheckbox = document.getElementById('is_private');
+            const passwordField = document.getElementById('password_field');
+            const clubPasswordInput = document.getElementById('club_password');
+            
+            // Écouter les changements de la case
+            isPrivateCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    passwordField.style.display = 'block';
+                    clubPasswordInput.required = true;
+                } else {
+                    passwordField.style.display = 'none';
+                    clubPasswordInput.required = false;
+                    clubPasswordInput.value = '';
+                }
+            });
+        });
         
         // Fermer si on clique en dehors de la modale
         window.onclick = function(event) {
