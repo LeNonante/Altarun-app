@@ -157,6 +157,24 @@ html, body {
     padding-right: 0;
 }
 
+/* Déplacer le logo vers le bas quand le menu est réduit */
+.sidebar.collapsed .sidebar-header {
+    margin-bottom: 32px;
+    margin-top: 12px;
+    padding: 0 20px;
+    justify-content: center;
+    gap: 0;
+}
+
+.sidebar.collapsed .sidebar-header h1 {
+    display: none;
+}
+
+.sidebar.collapsed .sidebar-logo {
+    width: 24px;
+    height: 24px;
+}
+
 
 /* Style du bouton de bascule (Burger menu) */
 .toggle-btn {
