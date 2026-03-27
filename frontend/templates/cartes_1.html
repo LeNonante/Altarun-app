@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Parcours de course</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        #maCarteRoute { height: 500px; width: 80%; margin: auto; }
+        body { font-family: Arial; text-align: center; }
+    </style>
+</head>
+<body>
+    <h1>Mon Parcours de Course</h1>
+    <a href="/">Retour à l'accueil</a><br><br>
+
+    <div id="maCarteRoute"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // 1. Initialisation de la carte (centrée arbitrairement au début)
+        var carte = L.map('maCarteRoute').setView([48.85, 2.30], 13);
+
+        // 2. Ajout du fond de carte OpenStreetMap
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(carte);
+
+        // 3. Appel à notre API Flask pour récupérer les coordonnées
+        fetch('/api/donnees-parcours')
+            .then(response => response.json())
+            .then(coordonnees => {
+                // Création de la ligne rouge du parcours
+                var parcours = L.polyline(coordonnees, {color: 'red', weight: 5}).addTo(carte);
+                
+                // Ajuste le zoom pour voir tout le parcours automatiquement
+                carte.fitBounds(parcours.getBounds());
+            });
+    </script>
+</body>
+</html>

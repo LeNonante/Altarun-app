@@ -1,4 +1,4 @@
-from flask import Flask, request, session, redirect, url_for, render_template, Response
+from flask import Flask, jsonify, request, session, redirect, url_for, render_template, Response
 import os
 from services.config import *
 from services.big_query_requests import *
@@ -435,6 +435,34 @@ def profile_picture(username):
             
     except Exception:
         return redirect(url_for('static', filename='images/logo.svg'))
+
+@app.route('/parcours')
+def page_parcours():
+    return render_template('cartes_1.html')
+
+@app.route('/pays')
+def page_pays():
+    return render_template('cartes_2.html')
+
+# --- ROUTES API (Fournissent les données au JavaScript) ---
+
+@app.route('/api/donnees-parcours')
+def api_parcours():
+    # Exemple de coordonnées GPS pour une course (ex: près de la Tour Eiffel)
+    coordonnees = [
+        [48.8584, 2.2945],
+        [48.8600, 2.3000],
+        [48.8620, 2.3050],
+        [48.8640, 2.3150]
+    ]
+    return jsonify(coordonnees)
+
+@app.route('/api/donnees-pays')
+def api_pays():
+    # Une simple liste des pays à colorer
+    pays_selectionnes = ["FR", "CA", "JP", "BR"]
+    return jsonify(pays_selectionnes)
+
 
 
 if __name__ == '__main__':

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Sélection de Pays</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsvectormap/dist/css/jsvectormap.min.css" />
+    <style>
+        #maCartePays { height: 500px; width: 80%; margin: auto; }
+        body { font-family: Arial; text-align: center; background-color: #f8f9fa; }
+    </style>
+</head>
+<body>
+    <h1>Les Pays Sélectionnés</h1>
+    <a href="/">Retour à l'accueil</a><br><br>
+
+    <div id="maCartePays"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jsvectormap"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsvectormap/dist/maps/world.js"></script>
+    <script>
+        fetch('/api/donnees-pays')
+            .then(response => response.json())
+            .then(liste_pays => {
+                
+                new jsVectorMap({
+                    selector: '#maCartePays',
+                    map: 'world',
+                    backgroundColor: 'transparent',
+                    regionStyle: {
+                        initial: { fill: '#534126' }, // Couleur des pays normaux (gris clair)
+                        selected: { fill: '#EB8F25' } // Couleur de VOTRE sélection (bleu)
+                    },
+                    // On donne la liste ["FR", "CA", "JP", "BR"] reçue de Flask
+                    selectedRegions: liste_pays 
+                });
+
+            });
+    </script>
+</body>
+</html>
