@@ -1,0 +1,56 @@
+[project]
+name = "altarun-app"
+version = "0.1.0"
+description = "Application Altarun : pipeline data Strava + webapp communautaire (clubs, équipes, dashboards) + module IA (séances personnalisées)."
+requires-python = ">=3.10"
+
+# ---------------------------------------------------------------------------
+# Ruff — linter + formatter Python
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+extend-exclude = [
+    "api/instance",
+    "api/static",
+    "frontend/static",
+    "**/__pycache__",
+    ".venv",
+    "venv",
+]
+
+[tool.ruff.lint]
+# Sélection de règles raisonnable pour un projet Flask en évolution :
+# E/W = pycodestyle, F = pyflakes, I = isort, B = bugbear, UP = pyupgrade,
+# SIM = simplify, C4 = comprehensions, RUF = ruff-specific.
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "C4", "RUF"]
+ignore = [
+    "E501",   # line-too-long (géré par le formatter, pas en strict)
+    "B008",   # function call in default argument — courant avec Flask (datetime.utcnow)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]  # asserts autorisés dans les tests
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+
+# ---------------------------------------------------------------------------
+# pytest
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning:flask_sqlalchemy.*",
+]

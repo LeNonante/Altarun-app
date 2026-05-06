@@ -10,7 +10,18 @@ import pyotp
 from flask_mail import Mail, Message
 import secrets
 from datetime import datetime, timedelta
-from google.cloud import bigquery
+
+# Couche service : la logique BigQuery et Strava est extraite de ce fichier.
+from services.bigquery_service import (
+    configure_credentials as configure_bigquery_credentials,
+    get_last_etl_executions,
+)
+from services.strava_service import (
+    disconnect_user as disconnect_strava_user,
+    get_strava_payload,
+    list_connected_users as list_connected_strava_users,
+    update_user_tokens as update_strava_tokens,
+)
 
 
 load_dotenv()
@@ -35,8 +46,9 @@ mail = Mail(app)
 
 db.init_app(app)
 
-GOOGLE_APPLICATION_CREDENTIALS = os.path.join(basedir, "gcp-key.json")
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = GOOGLE_APPLICATION_CREDENTIALS
+# Configuration de l'authentification Google Cloud pour BigQuery.
+# Le client BigQuery est instancié à la demande dans services/bigquery_service.py.
+configure_bigquery_credentials(os.path.join(basedir, "gcp-key.json"))
 
 
 
@@ -182,28 +194,16 @@ def update_user_password(username):
 def list_strava_users():
     if request.method == 'PUT':
         data = request.get_json()
-        print(data)
         username = data.get('username')
         user = User.query.filter_by(username=username).first()
         if not user:
             return jsonify({'error': 'User not found'}), 404
-        user.is_strava_connected = data.get('is_strava_connected', user.is_strava_connected)
-        user.strava_id = data.get('strava_id', user.strava_id)
-        user.strava_access_token = data.get('access_token', user.strava_access_token)
-        user.strava_expires_at = data.get('expires_at', user.strava_expires_at)
-        user.strava_refresh_token = data.get('refresh_token', user.strava_refresh_token)
-        db.session.commit()
+        # L'ETL pilote lui-même le flag is_strava_connected (mark_connected=False).
+        update_strava_tokens(user, data, mark_connected=False)
         return {'message': 'Strava data updated successfully'}, 200
-    
-    users = User.query.filter_by(is_strava_connected=True).all()
-    return jsonify([{
-        'username': u.username,
-        'strava_id': u.strava_id,
-        'access_token': u.strava_access_token,
-        'expires_at': u.strava_expires_at,
-        'refresh_token': u.strava_refresh_token
-    } for u in users])
-    
+
+    return jsonify(list_connected_strava_users())
+
 
 @app.route('/users/<username>/strava', methods=['GET', 'PUT', 'DELETE'])
 def update_user_strava(username):
@@ -211,29 +211,12 @@ def update_user_strava(username):
     if not user:
         return jsonify({'error': 'User not found'}), 404
     if request.method == 'GET':
-        return {
-            'is_strava_connected': user.is_strava_connected,
-            'strava_id': user.strava_id,
-            'strava_access_token': user.strava_access_token,
-            'strava_expires_at': user.strava_expires_at,
-            'strava_refresh_token': user.strava_refresh_token
-        }
+        return get_strava_payload(user)
     if request.method == 'DELETE':
-        user.is_strava_connected = False
-        user.strava_access_token = None
-        user.strava_expires_at = None
-        user.strava_refresh_token = None
-        user.strava_id = None
-        db.session.commit()
+        disconnect_strava_user(user)
         return {'message': 'Strava disconnected successfully'}, 200
     if request.method == 'PUT':
-        data = request.get_json()
-        user.is_strava_connected = True
-        user.strava_id = data.get('strava_id', user.strava_id)
-        user.strava_access_token = data.get('access_token', user.strava_access_token)
-        user.strava_expires_at = data.get('expires_at', user.strava_expires_at)
-        user.strava_refresh_token = data.get('refresh_token', user.strava_refresh_token)
-        db.session.commit()
+        update_strava_tokens(user, request.get_json(), mark_connected=True)
         return {'message': 'Strava connection updated successfully'}, 200
 
 @app.route('/auth', methods=['POST'])
@@ -540,27 +523,14 @@ def update_user_role(user_id):
 
 @app.route('/bigquery-data/last-executions', methods=['GET'])
 def get_bigquery_data():
-    """
-    Permet de récupérer les 10 dernières exécutions de l'ETL Strava depuis BigQuery
+    """Retourne les 10 dernières exécutions de l'ETL Strava depuis BigQuery.
+
+    La logique BigQuery est dans services/bigquery_service.py. Ici, la route
+    se contente d'appeler le service et de gérer la réponse HTTP.
     """
     try:
-        # Le client s'authentifie tout seul grâce à la variable d'environnement
-        client = bigquery.Client()
-
-        # REquete SQL
-        query = """
-            SELECT * FROM `dashboardstrava-grafana.strava_data.timestamp_executions_order` LIMIT 10
-        """
-        
-        query_job = client.query(query)  # Lance la requête
-        
-        results = []
-        for row in query_job:
-            # On transforme chaque ligne (Row) en dictionnaire
-            results.append(dict(row))
-
+        results = get_last_etl_executions(limit=10)
         return jsonify(results), 200
-
     except Exception as e:
         print(f"Erreur BigQuery: {e}")
         return jsonify({'error': str(e)}), 500

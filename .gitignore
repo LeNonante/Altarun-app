@@ -1,5 +1,15 @@
 api_test.py
 gcp-key.json
+
+# Claude Code — overrides locaux (peuvent contenir des chemins/permissions perso)
+.claude/settings.local.json
+.claude/.session/
+
+# Ruff
+.ruff_cache/
+
+# pytest
+.pytest_cache/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
