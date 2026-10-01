@@ -875,9 +875,12 @@
 
     // ------------------------------------------------------------- cycle de rendu
     function syncUrl() {
-        const p = new URLSearchParams(location.search);
-        p.set("sport", state.sport); p.set("periode", String(state.weeks));
-        history.replaceState(null, "", `${location.pathname}?${p.toString()}`);
+        // Filtres reflétés dans l'URL => vue partageable. Ignoré si l'environnement l'interdit.
+        try {
+            const p = new URLSearchParams(location.search);
+            p.set("sport", state.sport); p.set("periode", String(state.weeks));
+            history.replaceState(null, "", `${location.pathname}?${p.toString()}`);
+        } catch (e) { /* iframe sandboxée, file:// … */ }
     }
 
     function update() {
