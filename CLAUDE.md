@@ -7,9 +7,9 @@
 
 **Altarun** est une application web autour de la course à pied basée sur l'API Strava. Elle est construite en trois grandes parties :
 
-1. **Pipeline de données (Modern Data Stack)** — récupération et traitement des données Strava des utilisateurs (les exécutions ETL sont tracées dans BigQuery).
-2. **Web app communautaire** — affichage de dashboards sur les activités Strava, création de clubs, équipes, défis entre coureurs.
-3. **Module IA (à venir)** — génération de séances de course à pied personnalisées à partir des données Strava de l'utilisateur.
+1. **Pipeline de données (Modern Data Stack)** : récupération et traitement des données Strava des utilisateurs (les exécutions ETL sont tracées dans BigQuery).
+2. **Web app communautaire** : affichage de dashboards sur les activités Strava, création de clubs, équipes, défis entre coureurs.
+3. **Module IA (à venir)** : génération de séances de course à pied personnalisées à partir des données Strava de l'utilisateur.
 
 L'app est en français (UI, commentaires, messages d'erreur). Toute nouvelle fonctionnalité doit conserver cette langue côté utilisateur.
 
@@ -58,8 +58,8 @@ Altarun-app/
 
 `api/main.py` reste un point d'entrée volontairement fin : il configure Flask/SQLAlchemy, déclare le middleware Bearer (`@app.before_request`) et expose les routes REST. Toute la logique data/API externe vit dans `api/services/` :
 
-- `services/bigquery_service.py` — configuration des credentials GCP, client BigQuery (singleton paresseux), requêtes SQL contre l'entrepôt Strava. Les fonctions retournent des structures Python prêtes pour `jsonify()`.
-- `services/strava_service.py` — lecture/écriture des tokens Strava sur le modèle `User`, listing des utilisateurs connectés pour l'ETL, déconnexion. Aucune logique HTTP, manipule directement les objets SQLAlchemy.
+- `services/bigquery_service.py` : configuration des credentials GCP, client BigQuery (singleton paresseux), requêtes SQL contre l'entrepôt Strava. Les fonctions retournent des structures Python prêtes pour `jsonify()`.
+- `services/strava_service.py` : lecture/écriture des tokens Strava sur le modèle `User`, listing des utilisateurs connectés pour l'ETL, déconnexion. Aucune logique HTTP, manipule directement les objets SQLAlchemy.
 
 Quand tu ajoutes ou modifies une route qui touche à BigQuery ou aux tokens Strava, **passe toujours par les services** plutôt que d'écrire la logique directement dans `main.py`. Si une nouvelle source de données externe arrive (Pydantic schemas, webhooks Strava, autres entrepôts), créer un nouveau fichier dans `api/services/` plutôt que de gonfler les existants.
 
@@ -67,17 +67,17 @@ Quand tu ajoutes ou modifies une route qui touche à BigQuery ou aux tokens Stra
 
 - Toute requête vers l'API doit porter un header `Authorization: Bearer <API_TOKEN>` (vérifié dans `@app.before_request`).
 - Le frontend gère les sessions utilisateur avec **Flask-Login** + protection CSRF (**Flask-WTF**).
-- 2FA optionnel via TOTP (**pyotp**) — secret stocké en base, QR code généré côté frontend.
+- 2FA optionnel via TOTP (**pyotp**) : secret stocké en base, QR code généré côté frontend.
 - Reset de mot de passe par email (Flask-Mail / Gmail SMTP) avec token expirant en 1 h.
 - OAuth Strava : redirection vers `https://www.strava.com/oauth/authorize`, callback sur `/exchange_token`.
 
 ### Modèles de données (api/database/models.py)
 
-- `User` — id, username, email, password_hash, photo (LargeBinary), 2FA, tokens Strava, reset_token.
-- `Club` — id, name, code (6 caractères unique), is_private, password_hash, admin_id (FK User).
-- `Team` — id, name, color, photo, club_id (FK Club, cascade).
-- `club_membership` — table d'association User ↔ Club (Many-to-Many).
-- `team_membership` — table d'association User ↔ Team (Many-to-Many).
+- `User` : id, username, email, password_hash, photo (LargeBinary), 2FA, tokens Strava, reset_token.
+- `Club` : id, name, code (6 caractères unique), is_private, password_hash, admin_id (FK User).
+- `Team` : id, name, color, photo, club_id (FK Club, cascade).
+- `club_membership` : table d'association User ↔ Club (Many-to-Many).
+- `team_membership` : table d'association User ↔ Team (Many-to-Many).
 
 ## Stack technique
 
@@ -97,7 +97,7 @@ Quand tu ajoutes ou modifies une route qui touche à BigQuery ou aux tokens Stra
 ### Lancer l'application
 
 ```bash
-# Tout via Docker (recommandé) — nécessite le réseau externe docker-stack_local-network
+# Tout via Docker (recommandé) : nécessite le réseau externe docker-stack_local-network
 docker-compose up --build
 
 # En local sans Docker (deux terminaux séparés)
@@ -139,8 +139,8 @@ git branch -a                 # main, dev_louis, dev_aurel, ajout-cartes, dev-no
 
 Voir `.env.example` à la racine pour la liste complète. Les services lisent leur propre `.env` :
 
-- `api/.env` — `API_TOKEN`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `APP_URL`
-- `frontend/.env` — `API_TOKEN`, `API_URL`, `APP_URL`, `APP_PUBLIC_URL`, `STRAVA_CLIENT_ID`, `STRAVA_CLIENT_SECRET`, `SECRET_KEY_FRONT` (auto-généré), `DASHBOARD_SOURCE` (`mock` par défaut)
+- `api/.env` : `API_TOKEN`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `APP_URL`
+- `frontend/.env` : `API_TOKEN`, `API_URL`, `APP_URL`, `APP_PUBLIC_URL`, `STRAVA_CLIENT_ID`, `STRAVA_CLIENT_SECRET`, `SECRET_KEY_FRONT` (auto-généré), `DASHBOARD_SOURCE` (`mock` par défaut)
 
 Le fichier `api/gcp-key.json` (clé de service Google Cloud pour BigQuery) doit être placé manuellement, il est gitignoré.
 
@@ -169,9 +169,9 @@ Quand tu travailles sur ce projet :
 
 Voir `.claude/agents/` :
 
-- `backend-expert` — spécialiste du "Core" backend : routes Flask, sessions, sécurité (Bearer, CSRF, 2FA, hash de mots de passe), modèles métier (User/Club/Team), logique métier de haut niveau (clubs, équipes, admin). Délègue toute la partie Strava/BigQuery à `data-api-expert`.
-- `frontend-expert` — spécialiste Flask/Jinja, UX, intégration Strava OAuth côté UI, Flask-Login, Flask-WTF.
-- `data-api-expert` — expert intégration de données et ingénierie API : flux OAuth2 Strava (refresh tokens, parsing d'activités, webhooks), Google BigQuery (schémas, requêtes SQL, quotas/auth GCP), validation stricte avec Pydantic. Possède toute la logique située dans les services qui appellent une API externe ou qui stockent / requêtent des données externes.
+- `backend-expert` : spécialiste du "Core" backend : routes Flask, sessions, sécurité (Bearer, CSRF, 2FA, hash de mots de passe), modèles métier (User/Club/Team), logique métier de haut niveau (clubs, équipes, admin). Délègue toute la partie Strava/BigQuery à `data-api-expert`.
+- `frontend-expert` : spécialiste Flask/Jinja, UX, intégration Strava OAuth côté UI, Flask-Login, Flask-WTF.
+- `data-api-expert` : expert intégration de données et ingénierie API : flux OAuth2 Strava (refresh tokens, parsing d'activités, webhooks), Google BigQuery (schémas, requêtes SQL, quotas/auth GCP), validation stricte avec Pydantic. Possède toute la logique située dans les services qui appellent une API externe ou qui stockent / requêtent des données externes.
 
 ### Règle de routage entre `backend-expert` et `data-api-expert`
 
@@ -183,6 +183,6 @@ Voir `.claude/agents/` :
 
 - Ne jamais committer `api/gcp-key.json`, `api/.env`, `frontend/.env`, `api/instance/*.db` (déjà dans `.gitignore`).
 - Ne jamais hardcoder l'`API_TOKEN`, les credentials Strava ou le mot de passe Gmail.
-- Ne pas désactiver le check Bearer du `before_request` même temporairement — c'est la seule barrière entre l'API et l'extérieur.
+- Ne pas désactiver le check Bearer du `before_request` même temporairement : c'est la seule barrière entre l'API et l'extérieur.
 - Ne pas casser la rétro-compatibilité des routes existantes (le frontend tape dessus en HTTP).
-- Ne pas ajouter de dépendances JS lourdes côté frontend sans en discuter — l'app est volontairement légère (Jinja + CSS + un peu de JS vanilla).
+- Ne pas ajouter de dépendances JS lourdes côté frontend sans en discuter : l'app est volontairement légère (Jinja + CSS + un peu de JS vanilla).

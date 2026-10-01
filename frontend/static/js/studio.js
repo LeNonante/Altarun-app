@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Altarun — Studio KPI
+   Altarun : Studio KPI
    --------------------------------------------------------------------------
    Constructeur de KPI en glisser-déposer : on choisit une mesure, un axe,
    une légende et des filtres ; le studio agrège les activités, choisit un
@@ -43,7 +43,7 @@
         { key: "phase", label: "Phase de la période", group: "Temps", get: (a) => phaseOf(a.date), order: ["Début", "Milieu", "Fin"], sql: (c) => `CASE WHEN DATE(a.start_date_local) < '${M.dayKey(thirdBound(c, 1))}' THEN 'Début' WHEN DATE(a.start_date_local) < '${M.dayKey(thirdBound(c, 2))}' THEN 'Milieu' ELSE 'Fin' END` },
         { key: "mois", label: "Mois", group: "Temps", time: "month", get: (a) => `${a.date.getFullYear()}-${String(a.date.getMonth() + 1).padStart(2, "0")}`, sql: "DATE_TRUNC(DATE(a.start_date_local), MONTH)" },
         { key: "veille", label: "Activité de la veille", group: "Croisement", get: (a) => a.d_veille, order: ["Repos", "Tennis", "Course", "Autre sport"], sql: "COALESCE(v.activite_veille, 'Repos')", needs: "veille" },
-        { key: "chargeVeille", label: "Charge de la veille", group: "Croisement", get: (a) => a.d_chargeVeille, order: ["Repos", "Légère (< 80)", "Modérée (80–150)", "Forte (> 150)"], sql: "CASE WHEN v.charge IS NULL THEN 'Repos' WHEN v.charge < 80 THEN 'Légère (< 80)' WHEN v.charge <= 150 THEN 'Modérée (80–150)' ELSE 'Forte (> 150)' END", needs: "veille" },
+        { key: "chargeVeille", label: "Charge de la veille", group: "Croisement", get: (a) => a.d_chargeVeille, order: ["Repos", "Légère (< 80)", "Modérée (80-150)", "Forte (> 150)"], sql: "CASE WHEN v.charge IS NULL THEN 'Repos' WHEN v.charge < 80 THEN 'Légère (< 80)' WHEN v.charge <= 150 THEN 'Modérée (80-150)' ELSE 'Forte (> 150)' END", needs: "veille" },
         { key: "forme", label: "Forme du jour (TSB)", group: "Croisement", get: (a) => a.d_forme, order: ["Frais", "Équilibré", "Productif", "Surcharge"], sql: "l.forme", needs: "load" },
         { key: "golfWeek", label: "Semaine avec golf", group: "Croisement", get: (a) => a.d_golfWeek, order: ["Oui", "Non"], sql: "IF(gw.semaine IS NULL, 'Non', 'Oui')", needs: "golf" },
     ];
@@ -316,7 +316,7 @@ veille AS (
         }
         const table = {
             head: [r.xd ? r.xd.label : "", ...(r.ld ? r.series.map((s) => s.key) : [r.mea.label]), "n"],
-            rows: r.labels.map((lab, i) => [lab, ...r.series.map((s) => (s.values[i] == null ? "—" : fmt(s.values[i]))), M.sum(r.series, (s) => s.counts[i])]),
+            rows: r.labels.map((lab, i) => [lab, ...r.series.map((s) => (s.values[i] == null ? "-" : fmt(s.values[i]))), M.sum(r.series, (s) => s.counts[i])]),
         };
         if (visual === "table") {
             host.append(h("div", { class: "dash-table-wrap" }, h("table", { class: "dash-table" },
@@ -382,7 +382,7 @@ veille AS (
     }
 
     function deltaText(mea, d, pct) {
-        if (d == null || !isFinite(d)) return "—";
+        if (d == null || !isFinite(d)) return "-";
         if (pct) return F.signed(d, 1, " %");
         if (mea.key === "allure") return F.signed(d, 1, " s/km");
         if (mea.pct || mea.unit === "%") return F.signed(d, 1, " pts");
@@ -404,7 +404,7 @@ veille AS (
         const r = compareData(cfg, acts, ctx);
         const { c, mea } = r;
         const empty = !r.nA || r.vA == null || r.vB == null;
-        const headline = empty ? "—"
+        const headline = empty ? "-"
             : r.target ? mea.fmt(r.vA)
             : deltaText(mea, c.mode === "pct" ? ((r.vA - r.vB) / r.vB) * 100 : r.vA - r.vB, c.mode === "pct");
         const withBars = r.target || (!mea.zeroless && !mea.weighted);
@@ -414,7 +414,7 @@ veille AS (
             withBars
                 ? h("span", { class: "dash-cmp-track" }, h("span", { class: "dash-cmp-bar", style: `width:${((Math.abs(v || 0) / max) * 100).toFixed(1)}%;background:${color}` }))
                 : h("span", { class: "dash-cmp-meta" }, meta || ""),
-            h("strong", { class: "dash-cmp-value" }, v == null ? "—" : mea.fmt(v)));
+            h("strong", { class: "dash-cmp-value" }, v == null ? "-" : mea.fmt(v)));
         const accent = opts.color || "#3987e5";
         const weeks = Math.round(((ctx.end - ctx.from) / 86400000 + 1) / 7);
         const foot = empty ? "Pas assez de données sur la période"
@@ -435,7 +435,7 @@ veille AS (
         { title: "Tennis → Course", subtitle: "Allure des footings le lendemain d'un tennis", x: "veille", value: { key: "allure", agg: "weighted" }, legend: null, filters: { type: ["Footing"] }, visual: "compare", compare: { a: "Tennis", b: "__rest", labelA: "Après tennis", labelB: "Sans tennis", mode: "abs", value2: "fc" } },
         { title: "Golf → Sortie longue", subtitle: "Distance de la sortie longue en semaine de golf", x: "golfWeek", value: { key: "distance", agg: "avg" }, legend: null, filters: { type: ["Sortie longue"] }, visual: "compare", compare: { a: "Oui", b: "Non", labelA: "Semaine golf", labelB: "Sans golf", mode: "abs" } },
         { title: "Efficacité aérobie", subtitle: "Vitesse par battement cardiaque, footings et sorties longues", x: "phase", value: { key: "ef", agg: "avg" }, legend: null, filters: {}, visual: "compare", compare: { a: "Fin", b: "Début", labelA: "Fin de période", labelB: "Début de période", mode: "pct" } },
-        { title: "Polarisation course", subtitle: "Temps de course en basse intensité (Z1–Z2)", x: null, value: { key: "basseIntensite", agg: "ratio" }, legend: null, filters: {}, visual: "compare", compare: { target: 80, labelA: "Réalisé", labelB: "Cible 80/20", mode: "abs" } },
+        { title: "Polarisation course", subtitle: "Temps de course en basse intensité (Z1-Z2)", x: null, value: { key: "basseIntensite", agg: "ratio" }, legend: null, filters: {}, visual: "compare", compare: { target: 80, labelA: "Réalisé", labelB: "Cible 80/20", mode: "abs" } },
     ];
 
     /** Ligne de synthèse façon dashboard : max, min, écart. */

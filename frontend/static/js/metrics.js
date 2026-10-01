@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Altarun — couche sémantique (métriques métier)
+   Altarun : couche sémantique (métriques métier)
    --------------------------------------------------------------------------
    Toutes les définitions de KPI vivent ici, en un seul endroit, testables et
    indépendantes de l'affichage. Le jour où ces calculs migrent dans dbt
@@ -88,7 +88,7 @@
     }
 
     function acwrStatus(v) {
-        if (v == null) return { key: "na", label: "—" };
+        if (v == null) return { key: "na", label: "-" };
         if (v < 0.8) return { key: "warning", label: "Sous-charge" };
         if (v <= 1.3) return { key: "good", label: "Zone optimale" };
         if (v <= 1.5) return { key: "serious", label: "Vigilance" };
@@ -158,14 +158,14 @@
     }
 
     // ------------------------------------------------------------- formats
-    const fr = (v, d = 0) => (v == null || !isFinite(v) ? "—" : v.toLocaleString("fr-FR", { minimumFractionDigits: d, maximumFractionDigits: d }));
+    const fr = (v, d = 0) => (v == null || !isFinite(v) ? "-" : v.toLocaleString("fr-FR", { minimumFractionDigits: d, maximumFractionDigits: d }));
     const pace = (s) => {
-        if (s == null || !isFinite(s)) return "—";
+        if (s == null || !isFinite(s)) return "-";
         const m = Math.floor(s / 60), r = Math.round(s - m * 60);
         return r === 60 ? `${m + 1}'00"` : `${m}'${String(r).padStart(2, "0")}"`;
     };
     const duration = (min) => {
-        if (min == null) return "—";
+        if (min == null) return "-";
         const h = Math.floor(min / 60), m = Math.round(min - h * 60);
         return h ? `${h} h ${String(m).padStart(2, "0")}` : `${m} min`;
     };
@@ -173,7 +173,7 @@
         const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = Math.round(sec % 60);
         return h ? `${h} h ${String(m).padStart(2, "0")}'${String(s).padStart(2, "0")}"` : `${m}'${String(s).padStart(2, "0")}"`;
     };
-    const signed = (v, d = 0, unit = "") => (v == null || !isFinite(v) ? "—" : (v > 0 ? "+" : v < 0 ? "−" : "±") + fr(Math.abs(v), d) + unit);
+    const signed = (v, d = 0, unit = "") => (v == null || !isFinite(v) ? "-" : (v > 0 ? "+" : v < 0 ? "−" : "±") + fr(Math.abs(v), d) + unit);
 
     global.AltarunMetrics = {
         SPORTS, SPORT, DAY,

@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Altarun — mini librairie de graphiques SVG (vanilla JS, zéro dépendance)
+   Altarun : mini librairie de graphiques SVG (vanilla JS, zéro dépendance)
    --------------------------------------------------------------------------
    Volontairement légère (cf. CLAUDE.md : pas de dépendance JS lourde).
    Chaque fonction :
@@ -67,7 +67,7 @@
         return tip;
     }
 
-    /** rows: [{ value, label, color, line? }] — valeurs en premier, libellés ensuite. */
+    /** rows: [{ value, label, color, line? }] : valeurs en premier, libellés ensuite. */
     function showTip(evt, title, rows) {
         const t = tooltip();
         t.replaceChildren();
@@ -288,7 +288,7 @@
         return {
             table: {
                 head: ["", ...series.map((s) => s.name)],
-                rows: opts.labels.map((lab, i) => [(opts.tipLabels || opts.labels)[i], ...series.map((s) => (s.values[i] == null ? "—" : fmt(s.values[i])))]),
+                rows: opts.labels.map((lab, i) => [(opts.tipLabels || opts.labels)[i], ...series.map((s) => (s.values[i] == null ? "-" : fmt(s.values[i])))]),
             },
         };
     }
@@ -388,7 +388,7 @@
                         t.textContent = opts.format(v);
                         t.setAttribute("fill", opts.labelInk ? opts.labelInk(v) : "#fff");
                     }
-                    const tipFn = (evt) => showTip(evt, opts.cellTitle ? opts.cellTitle(i, j) : `${r} · ${c}`, [{ value: v == null ? "—" : opts.format(v), label: opts.valueLabel || "" }]);
+                    const tipFn = (evt) => showTip(evt, opts.cellTitle ? opts.cellTitle(i, j) : `${r} · ${c}`, [{ value: v == null ? "-" : opts.format(v), label: opts.valueLabel || "" }]);
                     rect.addEventListener("pointermove", tipFn);
                     rect.addEventListener("pointerleave", hideTip);
                 });
@@ -398,13 +398,13 @@
         return {
             table: {
                 head: ["", ...opts.cols],
-                rows: opts.rows.map((r, i) => [r, ...opts.values[i].map((v) => (v == null ? "—" : opts.format(v)))]),
+                rows: opts.rows.map((r, i) => [r, ...opts.values[i].map((v) => (v == null ? "-" : opts.format(v)))]),
             },
         };
     }
 
     // =====================================================================
-    // 4. Calendrier (type GitHub) — une colonne par semaine, lun → dim
+    // 4. Calendrier (type GitHub) : une colonne par semaine, lun → dim
     // =====================================================================
     /** opts = { days: [{ date: Date, value }], color(v), format(v), monthLabel(d) } */
     function calendar(container, opts) {
@@ -451,7 +451,7 @@
     }
 
     // =====================================================================
-    // 5. Barres horizontales empilées (100 % ou valeurs) — ex. zones FC
+    // 5. Barres horizontales empilées (100 % ou valeurs) : ex. zones FC
     // =====================================================================
     /** opts = { rows: [{ label, values: [] }], keys: [{ name, color }], percent, format } */
     function hstack(container, opts) {

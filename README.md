@@ -4,16 +4,16 @@ Application web autour de la course à pied basée sur l'API **Strava**.
 
 Le projet se découpe en trois étapes :
 
-1. **Modern Data Stack** — pipeline ETL des données Strava des utilisateurs (exécutions tracées dans BigQuery).
-2. **Web app communautaire** — dashboards Strava, clubs, équipes et défis entre coureurs.
-3. **Module IA** *(à venir)* — génération de séances de course personnalisées à partir des données Strava de l'utilisateur.
+1. **Modern Data Stack** : pipeline ETL des données Strava des utilisateurs (exécutions tracées dans BigQuery).
+2. **Web app communautaire** : dashboards Strava, clubs, équipes et défis entre coureurs.
+3. **Module IA** *(à venir)* : génération de séances de course personnalisées à partir des données Strava de l'utilisateur.
 
 ## Architecture
 
 ```
 Altarun-app/
-├── api/          # Backend Flask + SQLAlchemy (port 5000) — REST protégée par Bearer
-├── frontend/     # Frontend Flask + Jinja2 (port 5001) — UI utilisateur, OAuth Strava
+├── api/          # Backend Flask + SQLAlchemy (port 5000) : REST protégée par Bearer
+├── frontend/     # Frontend Flask + Jinja2 (port 5001) : UI utilisateur, OAuth Strava
 ├── docker-compose.yml
 ├── pyproject.toml    # Configuration Ruff (lint/format) + pytest
 ├── tests/            # Tests pytest
@@ -53,12 +53,12 @@ docker-compose up --build
 Dans deux terminaux :
 
 ```bash
-# Terminal 1 — API
+# Terminal 1 : API
 cd api
 pip install -r requirements.txt
 python main.py
 
-# Terminal 2 — Frontend
+# Terminal 2 : Frontend
 cd frontend
 pip install -r requirements.txt
 python app.py
@@ -84,6 +84,8 @@ frontend/data/mock/fct_activities.json (jeu de démo, seed fixe)  ────�
 | Visualisation | `frontend/static/js/charts.js` | Mini-librairie SVG sans dépendance (barres, lignes, nuages, heatmaps, calendrier) + vue tableau accessible |
 | Page | `frontend/static/js/dashboard.js`, `templates/index.html` | Filtres, tuiles KPI, analyses croisées, export CSV |
 | Studio KPI | `frontend/static/js/studio.js` | Constructeur de KPI en glisser-déposer (mesures × dimensions, dont dimensions croisées : activité/charge de la veille, forme du jour, semaine avec golf), 6 visuels, requête BigQuery générée, épinglage sur la vue d'ensemble. Le visuel « Comparaison » produit les cartes « Analyses croisées » (groupe A vs B ou valeur vs cible) : les 4 cartes par défaut sont des configurations du Studio, modifiables et remplaçables |
+
+**Profil sportif** (`static/js/profile.js`, bouton « Mes objectifs » et « Modifier » dans le coach) : objectif de course (nom, date, distance, chrono visé), objectifs hebdomadaires par sport, FC max et de repos, parcours de golf de référence. Toutes les cibles affichées en découlent.
 
 **Coach IA** (`templates/coach.html`, `static/js/coach.js`) : chat avec le coach, alimenté par un contexte calculé depuis `fct_activities` (forme du jour, charge, records, prédictions, effets croisés), affiché à droite de la conversation. Les réponses sont aujourd'hui générées localement à partir de ce contexte ; le branchement d'un modèle de langage passera par une route `POST /coach/message` qui recevra ce même contexte.
 
@@ -123,9 +125,9 @@ Ce dépôt est configuré pour [Claude Code](https://docs.claude.com/en/docs/cla
 
 Trois sub-agents spécialisés sont disponibles dans `.claude/agents/` :
 
-- `backend-expert` — Flask, SQLAlchemy, sécurité API, BigQuery.
-- `frontend-expert` — Jinja2, CSS, Strava OAuth, Flask-Login.
-- `devops-expert` — Docker, gunicorn, déploiement.
+- `backend-expert` : Flask, SQLAlchemy, sécurité API, BigQuery.
+- `frontend-expert` : Jinja2, CSS, Strava OAuth, Flask-Login.
+- `devops-expert` : Docker, gunicorn, déploiement.
 
 ## Branches
 

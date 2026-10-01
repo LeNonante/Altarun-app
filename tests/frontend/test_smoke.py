@@ -1,6 +1,6 @@
 """Smoke tests pour le frontend.
 
-Ces tests sont volontairement très légers — le frontend appelle l'API en HTTP via
+Ces tests sont volontairement très légers : le frontend appelle l'API en HTTP via
 ``requests``, donc tester finement implique de mocker ces appels (à ajouter quand
 on en aura besoin).
 """

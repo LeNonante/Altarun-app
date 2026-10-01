@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Altarun — Dashboard multi-sport
+   Altarun : Dashboard multi-sport
    --------------------------------------------------------------------------
    Lit le contrat `fct_activities` (GET /dashboard/data), applique les filtres
    (sport × période), calcule les KPI via AltarunMetrics et dessine via
@@ -57,6 +57,19 @@
         window.scrollTo({ top: 0, behavior: "smooth" });
     }
     let DATA = null;
+    let PAYLOAD = null;
+    const P = window.AltarunProfile;
+
+    /** Applique le profil sportif (objectifs, FC) puis prépare les données. */
+    function loadData() {
+        const prof = P.get();
+        PAYLOAD.meta.athlete = { ...PAYLOAD.meta.athlete, hr_max: prof.hrMax, hr_rest: prof.hrRest };
+        M.SPORTS.forEach((s) => {
+            s.target = prof.targets[s.key];
+            s.targetLabel = s.key === "Golf" ? `Moyenne visée ${F.fr(s.target, 1)} h` : `Objectif ${F.fr(s.target, s.unit === "km" ? 0 : 1)} ${s.unit}`;
+        });
+        DATA = enrich(M.prepare(PAYLOAD));
+    }
 
     // ------------------------------------------------------------- DOM utils
     function h(tag, attrs, ...children) {
@@ -140,7 +153,7 @@
 
     /** delta: { value, unit, digits, goodWhenUp (true|false|null) } */
     function deltaChip(d) {
-        if (!d || d.value == null || !isFinite(d.value)) return h("span", { class: "dash-delta neutral" }, "— vs préc.");
+        if (!d || d.value == null || !isFinite(d.value)) return h("span", { class: "dash-delta neutral" }, "- vs préc.");
         if (Number(d.value.toFixed(d.digits || 0)) === 0) return h("span", { class: "dash-delta neutral" }, "± 0", h("span", { class: "dash-delta-ctx" }, " vs préc."));
         const up = d.value > 0;
         const good = d.goodWhenUp == null || Math.abs(d.value) < 1e-9 ? null : up === d.goodWhenUp;
@@ -179,7 +192,7 @@
         data.acts.forEach((a) => {
             const pv = byDay.get(M.dayKey(M.addDays(a.date, -1)));
             a.d_veille = !pv ? "Repos" : pv.tennis ? "Tennis" : pv.run ? "Course" : "Autre sport";
-            a.d_chargeVeille = !pv ? "Repos" : pv.load < 80 ? "Légère (< 80)" : pv.load <= 150 ? "Modérée (80–150)" : "Forte (> 150)";
+            a.d_chargeVeille = !pv ? "Repos" : pv.load < 80 ? "Légère (< 80)" : pv.load <= 150 ? "Modérée (80-150)" : "Forte (> 150)";
             const t = tsb.get(a.day) ?? 0;
             a.d_forme = t > 5 ? "Frais" : t >= -10 ? "Équilibré" : t >= -30 ? "Productif" : "Surcharge";
             a.d_golfWeek = golfWeeks.has(M.dayKey(M.mondayOf(a.date))) ? "Oui" : "Non";
@@ -269,9 +282,9 @@
             }),
             tile({
                 label: "Ratio aigu / chronique", value: F.fr(today.acwr, 2), unit: "",
-                hint: "ACWR (Gabbett) : charge moyenne 7 j / 28 j. Zone sûre 0,8 – 1,3 ; > 1,5 = risque de blessure accru.",
+                hint: "ACWR (Gabbett) : charge moyenne 7 j / 28 j. Zone sûre de 0,8 à 1,3 ; > 1,5 = risque de blessure accru.",
                 status: M.acwrStatus(today.acwr),
-                sub: "Charge 7 j vs 28 j · zone sûre 0,8 – 1,3",
+                sub: "Charge 7 j vs 28 j · zone sûre 0,8 à 1,3",
             }),
             tile({
                 label: "Régularité", value: F.fr(regular * 100), unit: "%",
@@ -351,7 +364,7 @@
             const ratio = loadRows.map((r) => ({ ...r, share: r.l / totalLoad, hshare: M.sum(cur.filter((x) => x.sport_type === r.s.key), (x) => x.hours) / (hours || 1) }));
             const intense = ratio.slice().sort((a, b) => b.share / (b.hshare || 1) - a.share / (a.hshare || 1))[0];
             c.body.append(h("p", { class: "dash-footnote" },
-                `${intense.s.label} : ${F.fr(intense.hshare * 100)} % du temps mais ${F.fr(intense.share * 100)} % de la charge — le sport le plus « coûteux » par heure.`));
+                `${intense.s.label} : ${F.fr(intense.hshare * 100)} % du temps mais ${F.fr(intense.share * 100)} % de la charge : le sport le plus « coûteux » par heure.`));
         }
 
         // --- Insights croisés
@@ -468,7 +481,7 @@
         const vals = bucketSeries(ctx.cur, ctx.bks, ctx.grain, f);
         const roll = ctx.grain === "week" ? M.rolling(bucketSeries(sportAll, allW, "week", f), 4).slice(-ctx.bks.length) : null;
         const unit = isKm ? " km" : " h";
-        const c = card(ctx.grain === "week" ? `Volume hebdomadaire — ${s.label}` : `Volume quotidien — ${s.label}`,
+        const c = card(ctx.grain === "week" ? `Volume hebdomadaire · ${s.label}` : `Volume quotidien · ${s.label}`,
             `${isKm ? "Kilomètres" : "Heures"} par ${ctx.grain === "week" ? "semaine" : "jour"}${roll ? " · moyenne mobile 4 sem." : ""}`, { span: opts.span || 8 });
         grid.append(c.root);
         const legend = [{ name: s.label, color: s.color }];
@@ -543,7 +556,7 @@
                     return h("div", { class: "dash-pred-row" }, h("span", { class: "dash-pred-label" }, lab), h("strong", {}, F.hms(sec)), h("span", { class: "dash-pred-pace" }, F.pace(sec / dist) + "/km"));
                 });
                 c.body.append(h("div", { class: "dash-pred" }, rows),
-                    h("p", { class: "dash-footnote" }, `Référence : ${ref.a.name} du ${ref.a.date.toLocaleDateString("fr-FR")} — ${F.fr(d, 1)} km en ${F.hms(t)}. Marathon : extrapolation, à confirmer par des sorties longues de 30 km et plus.`));
+                    h("p", { class: "dash-footnote" }, `Référence : ${ref.a.name} du ${ref.a.date.toLocaleDateString("fr-FR")}, ${F.fr(d, 1)} km en ${F.hms(t)}. Marathon : extrapolation, à confirmer par des sorties longues de 30 km et plus.`));
                 c.setTable({ head: ["Distance", "Temps prédit", "Allure"], rows: [["5 km", 5], ["10 km", 10], ["Semi", 21.0975], ["Marathon", 42.195]].map(([l, dist]) => { const s = M.riegel(t, d, dist); return [l, F.hms(s), F.pace(s / dist)]; }) });
             }
         }
@@ -618,7 +631,7 @@
         root.append(h("div", { class: "dash-tiles" },
             tile({ label: "Temps de jeu", value: F.fr(hours / weeks, 1), unit: "h / sem.", delta: prev && { value: hours / weeks - M.sum(prev, (a) => a.hours) / weeks, digits: 1, unit: " h", goodWhenUp: true }, sub: `${F.fr(hours, 0)} h sur la période · objectif ${M.SPORT.Tennis.target} h`, spark: { values: bucketSeries(cur, ctx.wbks, "week", (a) => a.hours), color: M.SPORT.Tennis.color } }),
             tile({ label: "Séances", value: F.fr(cur.length), unit: "", delta: prev && { value: cur.length - prev.length, goodWhenUp: true }, sub: `${F.duration(M.mean(cur, (a) => a.moving_time_min))} en moyenne` }),
-            tile({ label: "Bilan en match", value: `${wins} – ${matches.length - wins}`, unit: "", sub: `${matches.length} matchs joués`, delta: prevM && { value: matches.length - prevM.length, goodWhenUp: true } }),
+            tile({ label: "Bilan en match", value: `${wins} V · ${matches.length - wins} D`, unit: "", sub: `${matches.length} matchs joués`, delta: prevM && { value: matches.length - prevM.length, goodWhenUp: true } }),
             tile({ label: "Taux de victoire", value: F.fr(rate * 100), unit: "%", delta: prevRate != null && rate != null && { value: (rate - prevRate) * 100, unit: " pts", goodWhenUp: true }, sub: "sur les matchs de la période" }),
             tile({ label: "Intensité match vs entraînement", value: F.signed(hrMatch - hrTrain, 0), unit: "bpm", sub: `Match ${F.fr(hrMatch)} bpm · entraînement ${F.fr(hrTrain)} bpm`, delta: null }),
             tile({ label: "Dépense", value: F.fr(M.sum(cur, (a) => a.calories) / (hours || 1)), unit: "kcal / h", sub: `${F.fr(M.sum(cur, (a) => a.calories))} kcal sur la période`, delta: null }),
@@ -672,8 +685,9 @@
         const prev18 = prev && prev.filter((a) => a.holes === 18);
         const weekPlayed = new Set(cur.map((a) => M.dayKey(M.mondayOf(a.date)))).size;
         const allRounds = M.inRange(ctx.all, DATA.first, ctx.end).filter((a) => a.sport_type === "Golf");
-        const idx = M.golfIndex(allRounds);
-        const idxPrev = M.golfIndex(allRounds.filter((a) => a.date < ctx.from));
+        const course = P.get().golf;
+        const idx = M.golfIndex(allRounds, course.rating, course.slope);
+        const idxPrev = M.golfIndex(allRounds.filter((a) => a.date < ctx.from), course.rating, course.slope);
         const avg = M.mean(r18, (a) => a.strokes), prevAvg = prev18 && prev18.length ? M.mean(prev18, (a) => a.strokes) : null;
 
         root.append(h("div", { class: "dash-tiles" },
@@ -681,8 +695,8 @@
             tile({ label: "Parcours joués", value: F.fr(cur.length), unit: "", sub: `${r18.length} × 18 trous · ${cur.length - r18.length} × 9 trous`, delta: prev && { value: cur.length - prev.length, goodWhenUp: true } }),
             tile({ label: "Semaines jouées", value: F.fr((100 * weekPlayed) / ctx.wbks.length), unit: "%", sub: `${weekPlayed} semaines sur ${ctx.wbks.length}`, delta: null }),
             tile({ label: "Score moyen 18 trous", value: F.fr(avg, 1), unit: "coups", delta: prevAvg != null && { value: avg - prevAvg, digits: 1, unit: " coups", goodWhenUp: false }, sub: `Par 72 · +${F.fr(avg - 72, 1)} en moyenne` }),
-            tile({ label: "Meilleure carte", value: r18.length ? String(Math.min(...r18.map((a) => a.strokes))) : "—", unit: "coups", sub: r18.length ? `le ${r18.slice().sort((a, b) => a.strokes - b.strokes)[0].date.toLocaleDateString("fr-FR")}` : "", delta: null }),
-            tile({ label: "Index estimé", value: F.fr(idx, 1), unit: "", hint: "Méthode WHS simplifiée : moyenne des 8 meilleurs différentiels sur les 20 dernières cartes (SR 71,2 / slope 128).", delta: idxPrev != null && { value: idx - idxPrev, digits: 1, goodWhenUp: false }, sub: "8 meilleurs des 20 derniers 18 trous" }),
+            tile({ label: "Meilleure carte", value: r18.length ? String(Math.min(...r18.map((a) => a.strokes))) : "-", unit: "coups", sub: r18.length ? `le ${r18.slice().sort((a, b) => a.strokes - b.strokes)[0].date.toLocaleDateString("fr-FR")}` : "", delta: null }),
+            tile({ label: "Index estimé", value: F.fr(idx, 1), unit: "", hint: `Méthode WHS simplifiée : moyenne des 8 meilleurs différentiels sur les 20 dernières cartes. Parcours de référence du profil : SR ${F.fr(course.rating, 1)} / slope ${course.slope}.`, delta: idxPrev != null && { value: idx - idxPrev, digits: 1, goodWhenUp: false }, sub: "8 meilleurs des 20 derniers 18 trous" }),
         ));
         const grid = h("div", { class: "dash-grid" });
         root.append(grid);
@@ -722,7 +736,7 @@
         const p100 = M.mean(cur, (a) => a.pace_s_per_100m), prevP = prev && prev.length ? M.mean(prev, (a) => a.pace_s_per_100m) : null;
         const sw = M.mean(cur, (a) => a.swolf), prevSw = prev && prev.length ? M.mean(prev, (a) => a.swolf) : null;
         root.append(h("div", { class: "dash-tiles" },
-            tile({ label: "Temps dans l'eau", value: F.fr(hours / weeks, 1), unit: "h / sem.", delta: prev && { value: hours / weeks - M.sum(prev, (a) => a.hours) / weeks, digits: 1, unit: " h", goodWhenUp: true }, sub: "objectif 1 h", spark: { values: bucketSeries(cur, ctx.wbks, "week", (a) => a.hours), color: M.SPORT.Swim.color } }),
+            tile({ label: "Temps dans l'eau", value: F.fr(hours / weeks, 1), unit: "h / sem.", delta: prev && { value: hours / weeks - M.sum(prev, (a) => a.hours) / weeks, digits: 1, unit: " h", goodWhenUp: true }, sub: `objectif ${F.fr(M.SPORT.Swim.target, 1)} h`, spark: { values: bucketSeries(cur, ctx.wbks, "week", (a) => a.hours), color: M.SPORT.Swim.color } }),
             tile({ label: "Distance", value: F.fr(km / weeks, 2), unit: "km / sem.", delta: prev && { value: pct(km, M.sum(prev, (a) => a.distance_km)), unit: " %", goodWhenUp: true }, sub: `${F.fr(km, 1)} km sur la période` }),
             tile({ label: "Allure de nage", value: F.pace(p100), unit: "/ 100 m", delta: prevP && { value: p100 - prevP, digits: 1, unit: " s", goodWhenUp: false }, sub: "temps de nage effectif" }),
             tile({ label: "SWOLF moyen", value: F.fr(sw, 1), unit: "", hint: "Coups de bras + secondes par longueur de 25 m. Plus bas = plus efficace.", delta: prevSw && { value: sw - prevSw, digits: 1, goodWhenUp: false }, sub: "bassin 25 m" }),
@@ -760,9 +774,9 @@
         const rate = att ? sends / att : null;
         const prevRate = prev && prev.length ? M.sum(prev, (a) => a.problems_sent) / M.sum(prev, (a) => a.attempts) : null;
         root.append(h("div", { class: "dash-tiles" },
-            tile({ label: "Temps de grimpe", value: F.fr(hours / weeks, 1), unit: "h / sem.", delta: prev && { value: hours / weeks - M.sum(prev, (a) => a.hours) / weeks, digits: 1, unit: " h", goodWhenUp: true }, sub: "objectif 1 h · 1 séance", spark: { values: bucketSeries(cur, ctx.wbks, "week", (a) => a.hours), color: M.SPORT.RockClimbing.color } }),
+            tile({ label: "Temps de grimpe", value: F.fr(hours / weeks, 1), unit: "h / sem.", delta: prev && { value: hours / weeks - M.sum(prev, (a) => a.hours) / weeks, digits: 1, unit: " h", goodWhenUp: true }, sub: `objectif ${F.fr(M.SPORT.RockClimbing.target, 1)} h`, spark: { values: bucketSeries(cur, ctx.wbks, "week", (a) => a.hours), color: M.SPORT.RockClimbing.color } }),
             tile({ label: "Séances", value: F.fr(cur.length), unit: "", delta: prev && { value: cur.length - prev.length, goodWhenUp: true }, sub: `${F.duration(M.mean(cur, (a) => a.moving_time_min))} en moyenne` }),
-            tile({ label: "Niveau max", value: maxI != null ? GRADES[maxI] : "—", unit: "Font.", delta: prevMax != null && maxI != null && { value: maxI - prevMax, unit: " cran(s)", goodWhenUp: true }, sub: "bloc le plus dur enchaîné" }),
+            tile({ label: "Niveau max", value: maxI != null ? GRADES[maxI] : "-", unit: "Font.", delta: prevMax != null && maxI != null && { value: maxI - prevMax, unit: " cran(s)", goodWhenUp: true }, sub: "bloc le plus dur enchaîné" }),
             tile({ label: "Blocs réussis", value: F.fr(sends), unit: "", delta: prev && { value: pct(sends, M.sum(prev, (a) => a.problems_sent)), unit: " %", goodWhenUp: true }, sub: `${F.fr(sends / (cur.length || 1), 1)} par séance` }),
             tile({ label: "Taux de réussite", value: F.fr(rate * 100), unit: "%", delta: prevRate && { value: (rate - prevRate) * 100, unit: " pts", goodWhenUp: true }, sub: `${F.fr(att)} essais` }),
             tile({ label: "FC moyenne", value: F.fr(M.mean(cur, (a) => a.avg_hr)), unit: "bpm", sub: "effort intermittent (pics en Z4)", delta: null }),
@@ -832,7 +846,7 @@
             type: "button", role: "tab", class: "dash-seg-btn", "aria-selected": String(state.weeks === p.weeks),
             onclick: () => { state.weeks = p.weeks; update(); },
         }, p.label)));
-        const exportBtn = h("button", { type: "button", class: "dash-btn", onclick: exportCsv }, "Exporter CSV");
+        const exportBtn = h("button", { type: "button", class: "dash-btn dash-export", onclick: exportCsv }, "Exporter CSV");
         host.replaceChildren(sportGroup, h("div", { class: "dash-toolbar-right" }, periodGroup, exportBtn));
     }
 
@@ -935,7 +949,14 @@
         if (p.get("vue") === "studio") state.view = "studio";
         try {
             const payload = window.ALTARUN_DATA || (await (await fetch(root.dataset.source, { credentials: "same-origin" })).json());
-            DATA = enrich(M.prepare(payload));
+            // Accès au profil sportif depuis l'en-tête de page
+            const head = document.querySelector(".page-head");
+            if (head && !head.querySelector(".dash-goals")) {
+                head.append(h("button", { type: "button", class: "dash-btn dash-goals", title: "Objectifs hebdomadaires, objectif de course, FC", onclick: (e) => P.openEditor({ focus: "targets", returnFocus: e.currentTarget }) }, "Mes objectifs"));
+            }
+            PAYLOAD = payload;
+            loadData();
+            P.onChange(() => { loadData(); update(); });
             root.classList.remove("is-loading");
             update();
         } catch (e) {

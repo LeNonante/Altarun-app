@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Altarun — Coach IA (page « Mon coach IA »)
+   Altarun : Coach IA (page « Mon coach IA »)
    --------------------------------------------------------------------------
    Interface de chat avec le coach. Le contexte envoyé au coach est calculé à
    partir du contrat `fct_activities` (forme du jour, charge, records, effets
@@ -15,8 +15,8 @@
     const M = window.AltarunMetrics;
     const F = M.fmt;
 
-    // Objectif déclaré dans le profil (sera stocké côté API)
-    const GOAL = { name: "Semi-marathon", date: new Date(2026, 9, 18), distance: 21.0975, targetSec: 86 * 60 };
+    // Objectif et paramètres : saisis par l'utilisateur dans son profil sportif
+    const P = window.AltarunProfile;
     const DAYS = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
     const MONTHS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
     const longDate = (d) => `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
@@ -47,6 +47,12 @@
 
     // ------------------------------------------------------------- contexte
     function buildContext(payload) {
+        const prof = P.get();
+        payload.meta.athlete = { ...payload.meta.athlete, hr_max: prof.hrMax, hr_rest: prof.hrRest };
+        const goal = {
+            name: prof.race.name, date: P.raceDate(prof), distance: prof.race.distanceKm, targetSec: prof.race.targetSec,
+            short: P.distanceOf(prof.race.distanceKm).short, updatedAt: prof.updatedAt,
+        };
         const D = M.prepare(payload);
         const today = M.addDays(D.last, 1); // données synchronisées jusqu'à la veille
         const tomorrow = M.addDays(today, 1);
@@ -55,8 +61,8 @@
         const runs = D.acts.filter((a) => a.sport_type === "Run");
         const races = runs.filter((a) => a.workout_type === "race");
         const best5k = races.filter((r) => Math.abs(r.distance_km - 5) < 0.1).sort((a, b) => a.moving_time_min - b.moving_time_min)[0];
-        const bestHalf = races.filter((r) => r.distance_km > 21).sort((a, b) => a.moving_time_min - b.moving_time_min)[0];
-        const predHalf = M.riegel(best5k.moving_time_min * 60, 5, GOAL.distance);
+        const bestSame = races.filter((r) => Math.abs(r.distance_km - goal.distance) < 0.2).sort((a, b) => a.moving_time_min - b.moving_time_min)[0];
+        const predRace = M.riegel(best5k.moving_time_min * 60, 5, goal.distance);
         const lastQuality = runs.filter((a) => a.workout_type === "intervals" || a.workout_type === "tempo").slice(-1)[0];
         const lastTennis = D.acts.filter((a) => a.sport_type === "Tennis").slice(-1)[0];
 
@@ -84,10 +90,10 @@
         const avg4 = M.sum(M.inRange(runs, M.addDays(monday, -28), M.addDays(monday, -1)), (a) => a.distance_km) / 4;
 
         return {
-            D, today, tomorrow, now, best5k, bestHalf, predHalf, lastQuality, lastTennis, tennisEffect, easyPace,
+            D, goal, today, tomorrow, now, best5k, bestSame, predRace, lastQuality, lastTennis, tennisEffect, easyPace,
             efGain: ((efEnd - efStart) / efStart) * 100, weekKm, avg4,
-            daysToGoal: Math.round((GOAL.date - today) / M.DAY),
-            goalPace: GOAL.targetSec / GOAL.distance,
+            daysToGoal: Math.round((goal.date - today) / M.DAY),
+            goalPace: goal.targetSec / goal.distance,
         };
     }
 
@@ -98,6 +104,7 @@
 
     function repsTable(reps) {
         return h("div", { class: "coach-reps" },
+            h("div", { class: "coach-reps-cap" }, "Tours de la séance enregistrés par ta montre"),
             h("div", { class: "coach-reps-head" }, h("span", {}, "1 000 m"), h("span", {}, "Temps"), h("span", {}, "Écart"), h("span", {}, "FC fin")),
             reps.map((r, i) => {
                 const avg = M.mean(reps, (x) => x.sec);
@@ -112,19 +119,19 @@
         const totalMin = 20 + (4 * p) / 60 + 4.5 + 10 + 5;
         const steps = [
             ["Échauffement", `20 min footing à ${F.pace(c.easyPace)}/km, puis 4 lignes droites de 80 m`],
-            ["Corps de séance", `4 × 1 000 m à **${F.pace(p - 2)} – ${F.pace(p + 2)}/km** (allure semi)`],
+            ["Corps de séance", `4 × 1 000 m à **${F.pace(p - 2)} à ${F.pace(p + 2)}/km** (allure ${c.goal.short})`],
             ["Récupération", "1'30\" de trot entre chaque 1 000 m"],
             ["Retour au calme", "10 min footing très souple"],
         ];
         const card = h("div", { class: "coach-session" },
             h("div", { class: "coach-session-head" },
-                h("div", {}, h("div", { class: "coach-session-kicker" }, cap(longDate(c.tomorrow))), h("div", { class: "coach-session-title" }, "4 × 1 000 m allure semi")),
+                h("div", {}, h("div", { class: "coach-session-kicker" }, cap(longDate(c.tomorrow))), h("div", { class: "coach-session-title" }, `4 × 1 000 m allure ${c.goal.short}`)),
                 h("span", { class: "coach-badge" }, `J-${c.daysToGoal - 1}`)),
             h("ol", { class: "coach-steps" }, steps.map(([k, v]) => h("li", {}, h("span", { class: "coach-step-k" }, k), rich(v)))),
             statBlock([
                 ["Distance", `${F.fr(totalKm, 1)} km`],
                 ["Durée", `${F.fr(totalMin)} min`],
-                ["FC cible", "165 – 170 bpm"],
+                ["FC cible", "165 à 170 bpm"],
                 ["Charge estimée", `~${F.fr(totalMin * 1.55)} TRIMP`],
             ]));
         const add = h("button", { type: "button", class: "coach-action" }, "Ajouter à mon plan");
@@ -133,16 +140,28 @@
         return card;
     }
 
+    /** Semaines restantes jusqu'à la course, volume dégressif par rapport à la moyenne des 4 dernières semaines. */
     function taperTable(c) {
-        const base = c.avg4;
-        const weeks = [
-            ["Cette semaine", "28 sept. → 4 oct.", base * 0.9, "Dernière séance spécifique longue dimanche : 16 km dont 6 km à allure semi"],
-            ["S-1", "5 → 11 oct.", base * 0.72, "3 × 2 000 m allure semi mardi, sortie longue réduite à 14 km"],
-            ["Semaine du semi", "12 → 18 oct.", base * 0.45, "Rappel 3 × 1 000 m mardi, footings courts, repos samedi"],
-        ];
+        const base = c.avg4, sh = c.goal.short;
+        const raceMonday = M.mondayOf(c.goal.date);
+        const curMonday = M.mondayOf(c.today);
+        const n = Math.round((raceMonday - curMonday) / (7 * M.DAY));
+        const plan = {
+            0: [0.45, `Rappel 3 × 1 000 m mardi, footings courts, repos la veille`],
+            1: [0.72, `3 × 2 000 m allure ${sh} mardi, sortie longue réduite à 14 km`],
+            2: [0.9, `Dernière sortie longue dimanche : 16 km dont 6 km à allure ${sh}`],
+            3: [1, "Dernière semaine de charge complète"],
+        };
+        const short = (d) => d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+        const rows = [];
+        for (let k = n; k >= 0; k--) {
+            const mon = M.addDays(raceMonday, -7 * k);
+            const [f, note] = plan[Math.min(k, 3)];
+            rows.push([k === n ? "Cette semaine" : k === 0 ? "Semaine de course" : `S-${k}`, `${short(mon)} → ${short(M.addDays(mon, 6))}`, base * f, note]);
+        }
         return h("div", { class: "coach-taper" },
             h("div", { class: "coach-taper-title" }, "Plan d'affûtage"),
-            weeks.map(([w, d, km, note]) => h("div", { class: "coach-taper-row" },
+            rows.map(([w, d, km, note]) => h("div", { class: "coach-taper-row" },
                 h("div", {}, h("strong", {}, w), h("span", {}, d)),
                 h("div", { class: "coach-taper-bar" }, h("span", { style: `width:${Math.round((km / base) * 100)}%` })),
                 h("div", { class: "coach-taper-km" }, `${F.fr(km)} km`, h("span", {}, `${F.signed(((km - base) / base) * 100, 0, " %")}`)),
@@ -153,13 +172,17 @@
     function replyTomorrow(c) {
         const tennisDays = Math.round((c.today - M.startOfDay(c.lastTennis.date)) / M.DAY);
         return [
-            rich(`Demain, ${longDate(c.tomorrow)} : **4 × 1 000 m à allure semi**, soit ${F.pace(c.goalPace)}/km.`),
-            rich(`Ton semi est dans ${c.daysToGoal} jours, on entre dans l'affûtage. Le principe : on garde l'intensité spécifique, mais on réduit le volume chaque semaine pour arriver frais le 18 sans perdre ta forme de fond.`),
+            rich(`Demain, ${longDate(c.tomorrow)} : **4 × 1 000 m à allure ${c.goal.short}**, soit ${F.pace(c.goalPace)}/km.`),
+            c.daysToGoal < 0
+                ? rich("Ta course objectif est passée. Mets à jour ton profil sportif pour que je construise la suite.")
+                : c.daysToGoal <= 24
+                    ? rich(`Ton ${c.goal.short} est dans ${c.daysToGoal} jours, on entre dans l'affûtage. Le principe : on garde l'intensité spécifique, mais on réduit le volume chaque semaine pour arriver frais le ${c.goal.date.getDate()} sans perdre ta forme de fond.`)
+                    : rich(`Ton ${c.goal.short} est dans ${c.daysToGoal} jours : on reste dans un bloc de développement, et cette séance sert à installer l'allure.`),
             sessionCard(c),
-            rich(`Pourquoi ${F.pace(c.goalPace)}/km : c'est l'allure d'un semi en **1 h 26'00"**, ton objectif. Ton RP 5 km (${F.hms(c.best5k.moving_time_min * 60)}) prédit ${F.hms(c.predHalf)} : l'objectif est ambitieux mais cohérent avec ton bloc. Le but de demain n'est pas d'aller plus vite, c'est d'ancrer la sensation de l'allure. Si ta FC dépasse 172 bpm dès la 2e répétition, termine à ${F.pace(c.goalPace + 4)}/km.`),
-            taperTable(c),
+            rich(`Pourquoi ${F.pace(c.goalPace)}/km : c'est l'allure d'un ${c.goal.short} en **${F.hms(c.goal.targetSec)}**, ton objectif. Ton RP 5 km (${F.hms(c.best5k.moving_time_min * 60)}) prédit ${F.hms(c.predRace)} : l'objectif est ambitieux mais cohérent avec ton bloc. Le but de demain n'est pas d'aller plus vite, c'est d'ancrer la sensation de l'allure. Si ta FC dépasse 172 bpm dès la 2e répétition, termine à ${F.pace(c.goalPace + 4)}/km.`),
+            c.daysToGoal >= 7 && c.daysToGoal <= 24 ? taperTable(c) : null,
             rich(c.now.tsb > 5
-                ? `Ta fraîcheur est déjà à ${F.signed(c.now.tsb)} après une semaine plus légère. L'enjeu de l'affûtage est donc de garder ta forme de fond (CTL ${F.fr(c.now.ctl)}) : c'est pour ça qu'on maintient des séances à allure semi jusqu'au bout.`
+                ? `Ta fraîcheur est déjà à ${F.signed(c.now.tsb)} après une semaine plus légère. L'enjeu de l'affûtage est donc de garder ta forme de fond (CTL ${F.fr(c.now.ctl)}) : c'est pour ça qu'on maintient des séances à allure ${c.goal.short} jusqu'au bout.`
                 : `Ta forme de fond (CTL ${F.fr(c.now.ctl)}) reste stable pendant que la fatigue redescend : on vise une fraîcheur (TSB) autour de +10 le jour de la course, contre ${F.signed(c.now.tsb)} aujourd'hui.`),
             rich(`Point d'attention : ${tennisDays <= 1 ? "tu as joué au tennis hier soir" : "pense au tennis"}. Sur tes 26 dernières semaines, tes footings sont **${F.signed(c.tennisEffect, 0)} s/km** plus lents le lendemain d'un tennis. Pas de tennis ce soir, pour arriver frais demain.`),
         ];
@@ -182,12 +205,13 @@
     }
 
     function replyTennis(c) {
-        return [rich(`Sur tes 26 dernières semaines, tes footings sont **${F.signed(c.tennisEffect, 0)} s/km** plus lents le lendemain d'un tennis. D'ici le semi, garde le tennis au moins 48 h avant les séances à allure semi, et coupe-le complètement les 3 jours avant la course.`)];
+        return [rich(`Sur tes 26 dernières semaines, tes footings sont **${F.signed(c.tennisEffect, 0)} s/km** plus lents le lendemain d'un tennis. D'ici ton ${c.goal.short}, garde le tennis au moins 48 h avant les séances à allure semi, et coupe-le complètement les 3 jours avant la course.`)];
     }
 
     function replyGoal(c) {
+        const g = c.goal;
         return [
-            rich(`Ton objectif : **1 h 26'00"** au semi du ${longDate(GOAL.date)}, soit ${F.pace(c.goalPace)}/km. Ton RP actuel est ${F.hms(c.bestHalf.moving_time_min * 60)} et ton 5 km (${F.hms(c.best5k.moving_time_min * 60)}) prédit ${F.hms(c.predHalf)}.`),
+            rich(`Ton objectif : **${F.hms(g.targetSec)}** au ${g.short} du ${longDate(g.date)} (${g.name}), soit ${F.pace(c.goalPace)}/km. ${c.bestSame ? `Ton RP sur la distance est ${F.hms(c.bestSame.moving_time_min * 60)} et ton` : "Ton"} 5 km (${F.hms(c.best5k.moving_time_min * 60)}) prédit ${F.hms(c.predRace)}.`),
             rich(`Ton efficacité aérobie progresse de ${F.signed(c.efGain, 1)} % en un an : c'est ce qui rend l'objectif atteignable. Pars sur ${F.pace(c.goalPace + 3)}/km les 5 premiers km, puis cale-toi à l'allure cible.`),
         ];
     }
@@ -198,8 +222,8 @@
         if (/(derniere|hier|c.etait|bien passe)/.test(t)) return replyLastSession(c);
         if (/(forme|fatigue|fraicheur|tsb|recup)/.test(t)) return replyForm(c);
         if (/tennis/.test(t)) return replyTennis(c);
-        if (/(semi|objectif|chrono|record|predict|temps)/.test(t)) return replyGoal(c);
-        return [rich("Je peux t'aider sur ta prochaine séance, ta forme du jour, ta préparation du semi ou l'impact de tes autres sports sur la course. Pose-moi ta question.")];
+        if (/(semi|marathon|objectif|chrono|record|predict|temps|course)/.test(t)) return replyGoal(c);
+        return [rich(`Je peux t'aider sur ta prochaine séance, ta forme du jour, ta préparation du ${c.goal.short} ou l'impact de tes autres sports sur la course. Pose-moi ta question.`)];
     }
 
     // ------------------------------------------------------------- historique
@@ -216,7 +240,7 @@
                     rich(`Oui, c'est très prometteur. Tes 6 × 1 000 m sont réguliers : **${F.pace(avg)}/km de moyenne**, avec seulement 4 s d'écart entre la plus rapide et la plus lente.`),
                     repsTable(reps),
                     rich(`Ta FC ne monte que de 168 à 174 bpm sur la séance : l'allure 10 km est maîtrisée, tu n'as pas fini dans le rouge. C'est cohérent avec ton RP 5 km en ${F.hms(c.best5k.moving_time_min * 60)}.`),
-                    rich(`Ton efficacité aérobie progresse aussi : ${F.signed(c.efGain, 1)} % de vitesse par battement cardiaque sur tes footings et sorties longues en un an. C'est ce qui fera la différence sur le semi.`),
+                    rich(`Ton efficacité aérobie progresse aussi : ${F.signed(c.efGain, 1)} % de vitesse par battement cardiaque sur tes footings et sorties longues en un an. C'est ce qui fera la différence sur ton ${c.goal.short}.`),
                     rich("Demain : footing tranquille en zone 2, sans regarder l'allure."),
                 ],
             },
@@ -301,7 +325,7 @@
             "Quelle est ma séance de course à pied demain ?",
             "Comment est ma forme ?",
             "Je peux jouer au tennis cette semaine ?",
-            "Où j'en suis pour mon objectif semi ?",
+            "Où j'en suis pour mon objectif ?",
         ].map((q) => h("button", { type: "button", class: "coach-chip", onclick: () => ask(q) }, q)));
 
         // Bouton discret : revient à l'historique de départ (utile pour rejouer une démo)
@@ -318,10 +342,13 @@
         const side = h("aside", { class: "coach-side" },
             h("div", { class: "coach-side-card goal" },
                 h("span", { class: "coach-side-kicker" }, "Objectif"),
-                h("strong", { class: "coach-side-big" }, `${GOAL.name}`),
-                h("span", {}, `${cap(longDate(GOAL.date))} · J-${c.daysToGoal}`),
-                h("div", { class: "coach-side-goal" }, h("span", {}, "Cible"), h("strong", {}, `1 h 26'00"`), h("span", {}, `${F.pace(c.goalPace)}/km`)),
-                h("div", { class: "coach-side-goal" }, h("span", {}, "Prédiction"), h("strong", {}, F.hms(c.predHalf)), h("span", {}, `${F.pace(c.predHalf / GOAL.distance)}/km`))),
+                h("strong", { class: "coach-side-big" }, c.goal.name),
+                h("span", {}, `${cap(longDate(c.goal.date))} · J-${c.daysToGoal}`),
+                h("div", { class: "coach-side-goal" }, h("span", {}, "Cible"), h("strong", {}, F.hms(c.goal.targetSec)), h("span", {}, `${F.pace(c.goalPace)}/km`)),
+                h("div", { class: "coach-side-goal" }, h("span", {}, "Prédiction"), h("strong", {}, F.hms(c.predRace)), h("span", {}, `${F.pace(c.predRace / c.goal.distance)}/km`)),
+                h("div", { class: "coach-side-source" },
+                    h("span", {}, `Défini dans ton profil sportif le ${P.frDate(c.goal.updatedAt)}`),
+                    h("button", { type: "button", class: "coach-link", onclick: (e) => P.openEditor({ focus: "race", returnFocus: e.currentTarget }) }, "Modifier"))),
             h("div", { class: "coach-side-card" },
                 h("span", { class: "coach-side-kicker" }, "Contexte utilisé par le coach"),
                 ...[
@@ -331,10 +358,12 @@
                     ["Course cette semaine", `${F.fr(c.weekKm, 1)} km`],
                     ["Moyenne 4 semaines", `${F.fr(c.avg4, 1)} km`],
                     ["RP 5 km", F.hms(c.best5k.moving_time_min * 60)],
-                    ["RP semi", F.hms(c.bestHalf.moving_time_min * 60)],
+                    c.bestSame && c.goal.short !== "5 km" ? [`RP ${c.goal.short}`, F.hms(c.bestSame.moving_time_min * 60)] : null,
+                    ["FC max / repos (profil)", `${P.get().hrMax} / ${P.get().hrRest} bpm`],
                     ["Effet tennis la veille", `${F.signed(c.tennisEffect, 0)} s/km`],
                     ["Efficacité aérobie (12 mois)", `${F.signed(c.efGain, 1)} %`],
-                ].map(([k, v]) => h("div", { class: "coach-side-row" }, h("span", {}, k), h("strong", {}, v)))));
+                ].filter(Boolean).map(([k, v]) => h("div", { class: "coach-side-row" }, h("span", {}, k), h("strong", {}, v))),
+                h("p", { class: "coach-side-note" }, "Calculé à partir de tes activités synchronisées et de ton profil sportif.")));
 
         root.replaceChildren(h("div", { class: "coach" }, chat, side));
         requestAnimationFrame(() => (log.scrollTop = log.scrollHeight));
@@ -347,6 +376,7 @@
             const payload = window.ALTARUN_DATA || (await (await fetch(root.dataset.source, { credentials: "same-origin" })).json());
             CTX = buildContext(payload);
             render(root);
+            P.onChange(() => { CTX = buildContext(payload); render(root); });
         } catch (e) {
             console.error("[Altarun] Coach indisponible", e);
             root.replaceChildren(h("div", { class: "error-message" }, "Le coach n'a pas pu charger tes activités. Réessaie dans un instant."));
