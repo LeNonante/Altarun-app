@@ -21,7 +21,7 @@ URL_LOGIN_STRAVA = f"https://www.strava.com/oauth/authorize?client_id={CLIENT_ID
 
 API_KEY = os.environ.get("API_TOKEN")
 
-#Gestion de la clef secrete pour les sessions
+#Gestion de la clef secrete pour les sessions t
 if not isThereASecretKey(): #Si pas de clef secrete (utilisée pour les sessions)
     # Générer une clé secrète aléatoire et la stocker dans le .env
     secret_key = os.urandom(24).hex()
