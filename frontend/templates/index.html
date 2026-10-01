@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Altarun - Dashboard</title>
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='images/Logo.svg') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/clubs.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
 </head>
 <body>
     <div class="app-container">
@@ -81,8 +81,13 @@
 
         <!-- Main Content -->
         <main class="main-content">
-            <div class="content-wrapper">
-                <h1 class="page-title">Dashboard</h1>
+            <div class="content-wrapper wide">
+                <div class="page-head">
+                    <div>
+                        <h1 class="page-title">Dashboard</h1>
+                        <p class="page-kicker">Bonjour {{ current_user.id }} — ta performance multi-sport, croisée et expliquée.</p>
+                    </div>
+                </div>
 
                 {% if not is_strava_connected %}
                 <div class="strava-banner">
@@ -94,11 +99,19 @@
                     </div>
                 </div>
                 {% endif %}
-            
 
+                <!-- Dashboard multi-sport : rendu côté client à partir du contrat fct_activities -->
+                <div id="dashboard" class="dashboard is-loading" data-source="{{ url_for('dashboard_data') }}">
+                    <div id="dash-toolbar" class="dash-toolbar"></div>
+                    <div id="dash-meta" class="dash-meta"></div>
+                    <div id="dash-body"></div>
+                </div>
             </div>
         </main>
     </div>
+    <script src="{{ url_for('static', filename='js/metrics.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const toggleBtn = document.getElementById('sidebarToggle');

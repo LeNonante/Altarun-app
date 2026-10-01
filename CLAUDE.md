@@ -37,14 +37,18 @@ Altarun-app/
 │   ├── app.py                    # Routes web, intégration Strava OAuth, sessions
 │   ├── services/
 │   │   ├── config.py             # Wrappers HTTP vers l'API + utilitaires (2FA, QR code)
-│   │   └── big_query_requests.py
+│   │   ├── big_query_requests.py
+│   │   └── dashboard_data.py     # Source du dashboard (mock|bigquery) + validation du contrat fct_activities
+│   ├── data/mock/                # Jeu de démo fct_activities.json (généré par scripts/)
 │   ├── templates/                # Templates Jinja2 (login, clubs, settings, admin, ...)
 │   ├── static/css|images/
+│   ├── static/js/                # metrics.js (KPI), charts.js (SVG), dashboard.js (page d'accueil)
 │   ├── requirements.txt
 │   └── Dockerfile                # Expose le port 5001, gunicorn
 │
 ├── docker-compose.yml            # Orchestre les deux services sur le réseau docker-stack_local-network
 ├── pyproject.toml                # Config Ruff + pytest (racine partagée)
+├── scripts/                      # generate_mock_activities.py (jeu de démo calibré, seed fixe)
 ├── tests/                        # Tests pytest (api/ et frontend/)
 ├── .env.example                  # Modèle de variables d'environnement
 └── CLAUDE.md                     # Ce fichier
@@ -123,12 +127,19 @@ pytest -k "club"              # filtrer par nom
 git branch -a                 # main, dev_louis, dev_aurel, ajout-cartes, dev-noms-onglets, menu-retractable
 ```
 
+### Dashboard (page d'accueil)
+
+- Toute définition de KPI vit dans `frontend/static/js/metrics.js` (une formule = un endroit). Ne pas recalculer un KPI dans `dashboard.js`.
+- Les couleurs de sport sont fixes (ordre de `SPORTS`) et validées daltonisme : ne jamais les réattribuer selon le filtre.
+- Le front ne lit que le contrat `fct_activities` via `GET /dashboard/data`. Pour brancher la vraie donnée : `DASHBOARD_SOURCE=bigquery` + route API `GET /bigquery-data/activities/<username>` (à implémenter dans `api/services/bigquery_service.py`).
+- Après modification du générateur : `python scripts/generate_mock_activities.py && pytest tests/frontend`.
+
 ## Variables d'environnement
 
 Voir `.env.example` à la racine pour la liste complète. Les services lisent leur propre `.env` :
 
 - `api/.env` — `API_TOKEN`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `APP_URL`
-- `frontend/.env` — `API_TOKEN`, `API_URL`, `APP_URL`, `APP_PUBLIC_URL`, `STRAVA_CLIENT_ID`, `STRAVA_CLIENT_SECRET`, `SECRET_KEY_FRONT` (auto-généré)
+- `frontend/.env` — `API_TOKEN`, `API_URL`, `APP_URL`, `APP_PUBLIC_URL`, `STRAVA_CLIENT_ID`, `STRAVA_CLIENT_SECRET`, `SECRET_KEY_FRONT` (auto-généré), `DASHBOARD_SOURCE` (`mock` par défaut)
 
 Le fichier `api/gcp-key.json` (clé de service Google Cloud pour BigQuery) doit être placé manuellement, il est gitignoré.
 

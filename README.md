@@ -64,6 +64,33 @@ pip install -r requirements.txt
 python app.py
 ```
 
+## Dashboard multi-sport (page d'accueil)
+
+La page d'accueil affiche un dashboard d'analyse multi-sport (course, natation, tennis, escalade, golf) avec un sélecteur de sport et de période (4 sem. → 12 mois, comparaison automatique à la période précédente).
+
+**Flux de données**
+
+```
+BigQuery (mart dbt fct_activities)  ──►  API /bigquery-data/activities/<user>  ──┐
+                                                                                   ├──►  frontend/services/dashboard_data.py  ──►  GET /dashboard/data  ──►  JS
+frontend/data/mock/fct_activities.json (jeu de démo, seed fixe)  ─────────────────┘        (DASHBOARD_SOURCE=mock|bigquery, validation du contrat)
+```
+
+| Couche | Fichier | Rôle |
+|---|---|---|
+| Données de démo | `scripts/generate_mock_activities.py` | Génère un jeu déterministe et **calibré** (course 40 km/sem. à 5'20"/km, tennis 3 h, natation 1 h, golf 2 h une semaine sur deux, escalade 1 h) avec des effets croisés réalistes |
+| Contrat | `frontend/services/dashboard_data.py` | Choix de la source, validation des colonnes `fct_activities` |
+| Couche sémantique | `frontend/static/js/metrics.js` | Définitions uniques des KPI : TRIMP, CTL/ATL/TSB, ACWR, efficacité aérobie, Riegel, index golf |
+| Visualisation | `frontend/static/js/charts.js` | Mini-librairie SVG sans dépendance (barres, lignes, nuages, heatmaps, calendrier) + vue tableau accessible |
+| Page | `frontend/static/js/dashboard.js`, `templates/index.html` | Filtres, tuiles KPI, analyses croisées, export CSV |
+
+**KPI notables** : charge d'entraînement TRIMP commune à tous les sports, modèle forme/fatigue/fraîcheur (Banister), ratio charge aiguë/chronique (risque de blessure), polarisation 80/20 par zones cardiaques, corrélations entre sports, effets mesurés (tennis la veille → allure du lendemain, semaine golf → sortie longue), prédictions de temps de course, index golf estimé (méthode WHS).
+
+```bash
+python scripts/generate_mock_activities.py        # régénère le jeu de démo (seed 42)
+pytest tests/frontend/test_dashboard_data.py      # vérifie le contrat et la calibration
+```
+
 ## Qualité de code
 
 Le projet utilise **Ruff** (lint + format) et **pytest** (tests). La configuration vit dans `pyproject.toml`.

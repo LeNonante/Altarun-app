@@ -1,7 +1,8 @@
-from flask import Flask, request, session, redirect, url_for, render_template, Response
+from flask import Flask, request, session, redirect, url_for, render_template, Response, jsonify
 import os
 from services.config import *
 from services.big_query_requests import *
+from services.dashboard_data import DashboardDataError, get_dashboard_payload
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_wtf.csrf import CSRFProtect
 
@@ -182,6 +183,18 @@ def index():
     context["is_strava_connected"] = infos.get("is_strava_connected", False)
     context["strava_login_url"] = URL_LOGIN_STRAVA
     return render_template('index.html', **context)
+
+@app.route('/dashboard/data')
+@login_required
+def dashboard_data():
+    """Activités de l'utilisateur au format fct_activities (source : DASHBOARD_SOURCE)."""
+    try:
+        payload = get_dashboard_payload(current_user.id)
+    except DashboardDataError as e:
+        return {'error': str(e)}, 503
+    response = jsonify(payload)
+    response.headers['Cache-Control'] = 'private, max-age=300'
+    return response
 
 @app.route('/clubs', methods=['GET', 'POST'])
 @login_required
