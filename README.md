@@ -83,7 +83,7 @@ frontend/data/mock/fct_activities.json (jeu de démo, seed fixe)  ────�
 | Couche sémantique | `frontend/static/js/metrics.js` | Définitions uniques des KPI : TRIMP, CTL/ATL/TSB, ACWR, efficacité aérobie, Riegel, index golf |
 | Visualisation | `frontend/static/js/charts.js` | Mini-librairie SVG sans dépendance (barres, lignes, nuages, heatmaps, calendrier) + vue tableau accessible |
 | Page | `frontend/static/js/dashboard.js`, `templates/index.html` | Filtres, tuiles KPI, analyses croisées, export CSV |
-| Studio KPI | `frontend/static/js/studio.js` | Constructeur de KPI en glisser-déposer (mesures × dimensions, dont dimensions croisées : activité/charge de la veille, forme du jour, semaine avec golf), 6 visuels, requête BigQuery générée, épinglage sur la vue d'ensemble |
+| Studio KPI | `frontend/static/js/studio.js` | Constructeur de KPI en glisser-déposer (mesures × dimensions, dont dimensions croisées : activité/charge de la veille, forme du jour, semaine avec golf), 6 visuels, requête BigQuery générée, épinglage sur la vue d'ensemble. Le visuel « Comparaison » produit les cartes « Analyses croisées » (groupe A vs B ou valeur vs cible) : les 4 cartes par défaut sont des configurations du Studio, modifiables et remplaçables |
 
 **KPI notables** : charge d'entraînement TRIMP commune à tous les sports, modèle forme/fatigue/fraîcheur (Banister), ratio charge aiguë/chronique (risque de blessure), polarisation 80/20 par zones cardiaques, corrélations entre sports, effets mesurés (tennis la veille → allure du lendemain, semaine golf → sortie longue), prédictions de temps de course, index golf estimé (méthode WHS).
 

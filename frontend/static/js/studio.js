@@ -25,6 +25,12 @@
     const SINGLE = "#3987e5";
     const TABLE = "`altarun.marts.fct_activities`";
 
+    // Contexte courant (période) : utilisé par les dimensions relatives à la période
+    let CTX = null;
+    const thirdBound = (c, k) => new Date(c.from.getTime() + ((c.end.getTime() + 86400000 - c.from.getTime()) * k) / 3);
+    const phaseOf = (d) => (!CTX ? null : d < thirdBound(CTX, 1) ? "Début" : d < thirdBound(CTX, 2) ? "Milieu" : "Fin");
+    const sqlOf = (d, c) => (typeof d.sql === "function" ? d.sql(c) : d.sql);
+
     // ------------------------------------------------------------ dimensions
     const DIMS = [
         // sql = expression BigQuery ; sqlValue = libellé affiché -> valeur stockée (pour les filtres)
@@ -34,6 +40,7 @@
         { key: "jour", label: "Jour de la semaine", group: "Temps", get: (a) => DOW[(a.date.getDay() + 6) % 7], order: DOW, sql: "FORMAT_DATE('%u', DATE(a.start_date_local))", sqlValue: (v) => String(DOW.indexOf(v) + 1) },
         { key: "moment", label: "Moment de la journée", group: "Temps", get: (a) => a.d_moment, order: ["Matin", "Midi", "Après-midi", "Soir"], sql: "CASE WHEN EXTRACT(HOUR FROM a.start_date_local) < 11 THEN 'Matin' WHEN EXTRACT(HOUR FROM a.start_date_local) < 15 THEN 'Midi' WHEN EXTRACT(HOUR FROM a.start_date_local) < 18 THEN 'Après-midi' ELSE 'Soir' END" },
         { key: "semaine", label: "Semaine", group: "Temps", time: "week", get: (a) => M.dayKey(M.mondayOf(a.date)), sql: "DATE_TRUNC(DATE(a.start_date_local), ISOWEEK)" },
+        { key: "phase", label: "Phase de la période", group: "Temps", get: (a) => phaseOf(a.date), order: ["Début", "Milieu", "Fin"], sql: (c) => `CASE WHEN DATE(a.start_date_local) < '${M.dayKey(thirdBound(c, 1))}' THEN 'Début' WHEN DATE(a.start_date_local) < '${M.dayKey(thirdBound(c, 2))}' THEN 'Milieu' ELSE 'Fin' END` },
         { key: "mois", label: "Mois", group: "Temps", time: "month", get: (a) => `${a.date.getFullYear()}-${String(a.date.getMonth() + 1).padStart(2, "0")}`, sql: "DATE_TRUNC(DATE(a.start_date_local), MONTH)" },
         { key: "veille", label: "Activité de la veille", group: "Croisement", get: (a) => a.d_veille, order: ["Repos", "Tennis", "Course", "Autre sport"], sql: "COALESCE(v.activite_veille, 'Repos')", needs: "veille" },
         { key: "chargeVeille", label: "Charge de la veille", group: "Croisement", get: (a) => a.d_chargeVeille, order: ["Repos", "Légère (< 80)", "Modérée (80–150)", "Forte (> 150)"], sql: "CASE WHEN v.charge IS NULL THEN 'Repos' WHEN v.charge < 80 THEN 'Légère (< 80)' WHEN v.charge <= 150 THEN 'Modérée (80–150)' ELSE 'Forte (> 150)' END", needs: "veille" },
@@ -45,8 +52,8 @@
     const isRun = (a) => a.sport_type === "Run";
     const MEASURES = [
         { key: "count", label: "Nombre de séances", unit: "", aggs: ["count"], get: () => 1, fmt: (v) => F.fr(v), sqlCol: "*" },
-        { key: "duree", label: "Durée", unit: "h", aggs: ["sum", "avg", "median", "max"], get: (a) => a.hours, fmt: (v) => F.fr(v, v < 10 ? 1 : 0) + " h", sqlCol: "a.moving_time_min / 60" },
-        { key: "distance", label: "Distance", unit: "km", aggs: ["sum", "avg", "median", "max"], get: (a) => a.distance_km, keep: (a) => a.distance_km != null, fmt: (v) => F.fr(v, v < 10 ? 1 : 0) + " km", sqlCol: "a.distance_km", sqlWhere: "a.distance_km IS NOT NULL" },
+        { key: "duree", label: "Durée", unit: "h", aggs: ["sum", "avg", "median", "max"], get: (a) => a.hours, fmt: (v) => F.fr(v, v < 10 ? 1 : 0) + " h", tick: (v) => F.fr(v, v % 1 ? 1 : 0) + " h", sqlCol: "a.moving_time_min / 60" },
+        { key: "distance", label: "Distance", unit: "km", aggs: ["sum", "avg", "median", "max"], get: (a) => a.distance_km, keep: (a) => a.distance_km != null, fmt: (v) => F.fr(v, v < 100 ? 1 : 0) + " km", tick: (v) => F.fr(v) + " km", sqlCol: "a.distance_km", sqlWhere: "a.distance_km IS NOT NULL" },
         { key: "trimp", label: "Charge (TRIMP)", unit: "", aggs: ["sum", "avg", "median", "max"], get: (a) => a.load, fmt: (v) => F.fr(v), sqlCol: "a.trimp" },
         { key: "fc", label: "FC moyenne", unit: "bpm", aggs: ["avg", "median", "max", "min"], get: (a) => a.avg_hr, fmt: (v) => F.fr(v) + " bpm", zeroless: true, sqlCol: "a.avg_hr" },
         { key: "allure", label: "Allure course", unit: "/km", aggs: ["weighted"], keep: isRun, weighted: (rs) => (M.sum(rs, (r) => r.moving_time_min) * 60) / M.sum(rs, (r) => r.distance_km), fmt: (v) => F.pace(v), zeroless: true, lowerIsBetter: true, sqlExpr: "SUM(a.moving_time_min) * 60 / SUM(a.distance_km)", sqlWhere: "a.sport_type = 'Run'" },
@@ -55,6 +62,7 @@
         { key: "denivele", label: "Dénivelé positif", unit: "m", aggs: ["sum", "avg", "max"], keep: (a) => a.elevation_gain_m != null, get: (a) => a.elevation_gain_m, fmt: (v) => F.fr(v) + " m", sqlCol: "a.elevation_gain_m", sqlWhere: "a.elevation_gain_m IS NOT NULL" },
         { key: "victoires", label: "Taux de victoire tennis", unit: "%", aggs: ["ratio"], keep: (a) => a.workout_type === "match", weighted: (rs) => (100 * rs.filter((r) => r.result === "W").length) / rs.length, fmt: (v) => F.fr(v) + " %", sqlExpr: "100 * COUNTIF(a.result = 'W') / COUNT(*)", sqlWhere: "a.workout_type = 'match'" },
         { key: "score", label: "Score golf (18 trous)", unit: "coups", aggs: ["avg", "median", "min"], keep: (a) => a.holes === 18, get: (a) => a.strokes, fmt: (v) => F.fr(v, 1), tick: (v) => F.fr(v), zeroless: true, lowerIsBetter: true, sqlCol: "a.strokes", sqlWhere: "a.holes = 18" },
+        { key: "basseIntensite", label: "Part en basse intensité", unit: "%", aggs: ["ratio"], keep: isRun, weighted: (rs) => (100 * M.sum(rs, (r) => r.hr_zones_min[0] + r.hr_zones_min[1])) / (M.sum(rs, (r) => M.sum(r.hr_zones_min)) || 1), fmt: (v) => F.fr(v) + " %", pct: true, sqlExpr: "100 * SUM(a.hr_z1_min + a.hr_z2_min) / SUM(a.moving_time_min)", sqlWhere: "a.sport_type = 'Run'" },
         { key: "blocs", label: "Blocs réussis", unit: "", aggs: ["sum", "avg", "max"], keep: (a) => a.problems_sent != null, get: (a) => a.problems_sent, fmt: (v) => F.fr(v), sqlCol: "a.problems_sent", sqlWhere: "a.sport_type = 'RockClimbing'" },
     ];
     const AGG_LABEL = { sum: "Somme", avg: "Moyenne", median: "Médiane", max: "Max", min: "Min", count: "Nombre", weighted: "Pondérée", ratio: "Ratio" };
@@ -69,6 +77,7 @@
         { key: "dots", label: "Points", icon: "M6 14a1.6 1.6 0 1 0 0 .1M12 8a1.6 1.6 0 1 0 0 .1M18 11a1.6 1.6 0 1 0 0 .1" },
         { key: "kpi", label: "Carte", icon: "M4 6h16v12H4zM8 13h8" },
         { key: "table", label: "Tableau", icon: "M3 5h18v14H3zM3 10h18M3 15h18M9 5v14" },
+        { key: "compare", label: "Comparaison", icon: "M4 7h9M4 12h16M4 17h6M17 4v6M14 7h6" },
     ];
 
     // Modèles : points de départ pour montrer l'étendue du studio
@@ -120,6 +129,7 @@
 
     /** Applique filtres + mesure, regroupe par axe × légende. */
     function compute(cfg, acts, ctx) {
+        CTX = ctx;
         const mea = MEA[cfg.value.key];
         let rows = acts.filter((a) => (mea.keep ? mea.keep(a) : true));
         Object.entries(cfg.filters || {}).forEach(([k, vals]) => {
@@ -178,6 +188,7 @@
     function buildSql(cfg, ctx, sportKey) {
         const mea = MEA[cfg.value.key];
         const dims = [cfg.x, cfg.legend, ...Object.keys(cfg.filters || {}).filter((k) => (cfg.filters[k] || []).length)].filter(Boolean).map((k) => DIM[k]);
+        CTX = ctx;
         const needs = new Set(dims.map((d) => d.needs).filter(Boolean));
         const ctes = [];
         if (needs.has("veille")) ctes.push(
@@ -201,8 +212,8 @@ veille AS (
   WHERE sport_type = 'Golf'
 )`);
         const sel = [];
-        if (cfg.x) sel.push(`  ${DIM[cfg.x].sql} AS axe`);
-        if (cfg.legend) sel.push(`  ${DIM[cfg.legend].sql} AS legende`);
+        if (cfg.x) sel.push(`  ${sqlOf(DIM[cfg.x], ctx)} AS axe`);
+        if (cfg.legend) sel.push(`  ${sqlOf(DIM[cfg.legend], ctx)} AS legende`);
         const agg = cfg.value.agg;
         const valueExpr = mea.sqlExpr || (agg === "count" ? "COUNT(*)" : agg === "median" ? `APPROX_QUANTILES(${mea.sqlCol}, 2)[OFFSET(1)]` : `${AGG_SQL[agg] || "SUM"}(${mea.sqlCol})`);
         sel.push(`  ${valueExpr} AS valeur`);
@@ -216,7 +227,7 @@ veille AS (
         dims.forEach((d) => { if (d.where) where.push(d.where); });
         Object.entries(cfg.filters || {}).forEach(([k, vals]) => {
             const d = DIM[k];
-            if (vals && vals.length) where.push(`${d.sql} IN (${vals.map((v) => `'${String(d.sqlValue ? d.sqlValue(v) : v).replace(/'/g, "\\'")}'`).join(", ")})`);
+            if (vals && vals.length) where.push(`${sqlOf(d, ctx)} IN (${vals.map((v) => `'${String(d.sqlValue ? d.sqlValue(v) : v).replace(/'/g, "\\'")}'`).join(", ")})`);
         });
         const group = [cfg.x && "axe", cfg.legend && "legende"].filter(Boolean);
         return (ctes.length ? `WITH ${ctes.join(",\n")}\n` : "")
@@ -265,7 +276,19 @@ veille AS (
         const visual = cfg.visual || "bar";
         const legendItems = r.ld ? r.series.map((s, i) => ({ name: s.key, color: colorFor(r.ld, s.key, i) })) : [];
 
-        if (visual === "kpi") {
+        if (visual === "compare") {
+            host.append(h("div", { class: "studio-compare" }, renderInsightCard(cfg, acts, ctx, h, { color: "#3987e5" })));
+            if (r.xd && r.labels.length > 1) {
+                const chartHost = h("div", { class: "studio-compare-context" });
+                host.append(h("div", { class: "studio-compare-caption" }, `Toutes les valeurs de « ${r.xd.label} »`), chartHost);
+                V.bandChart(chartHost, {
+                    labels: r.labels, yFormat: r.mea.tick || fmt, height: 200,
+                    ...(r.mea.zeroless
+                        ? { lines: [{ name: r.mea.label, color: SINGLE, values: r.series[0].values, noPath: true, dots: true, endDot: false }], valueLabels: fmt, invertY: r.mea.key === "allure" }
+                        : { bars: [{ name: r.mea.label, color: SINGLE, values: r.series[0].values }], stacked: false, valueLabels: fmt }),
+                });
+            }
+        } else if (visual === "kpi") {
             const tile = h("div", { class: "studio-kpi" },
                 h("div", { class: "studio-kpi-value" }, fmt(r.total)),
                 h("div", { class: "studio-kpi-sub" }, `${AGG_LABEL[cfg.value.agg]} sur ${r.n} activités`));
@@ -303,6 +326,118 @@ veille AS (
         return { table, result: r };
     }
 
+    // ------------------------------------------------------------ comparaison (cartes « analyses croisées »)
+    function scopedRows(cfg, acts, ctx) {
+        CTX = ctx;
+        const mea = MEA[cfg.value.key];
+        let rows = acts.filter((a) => (mea.keep ? mea.keep(a) : true));
+        Object.entries(cfg.filters || {}).forEach(([k, vals]) => {
+            if (vals && vals.length) rows = rows.filter((a) => vals.includes(DIM[k].get(a)));
+        });
+        return rows;
+    }
+
+    /** Valeurs disponibles sur l'axe (pour choisir les groupes A et B). */
+    function axisValues(cfg, acts, ctx) {
+        if (!cfg.x || !cfg.value) return [];
+        const d = DIM[cfg.x];
+        const present = new Set(scopedRows(cfg, acts, ctx).map(d.get).filter((v) => v != null));
+        return d.order ? d.order.filter((v) => present.has(v)) : [...present].sort();
+    }
+
+    /** Complète la config de comparaison avec des valeurs par défaut cohérentes. */
+    function ensureCompare(cfg, acts, ctx) {
+        const c = { mode: "abs", value2: null, target: null, labelA: "", labelB: "", ...(cfg.compare || {}) };
+        const vals = axisValues(cfg, acts, ctx);
+        if (cfg.x) {
+            if (!vals.includes(c.a)) c.a = vals[vals.length > 1 && vals[0] === "Repos" ? 1 : 0] || null;
+            if (c.b !== "__rest" && !vals.includes(c.b)) c.b = vals.length > 2 ? "__rest" : vals.find((v) => v !== c.a) || "__rest";
+        }
+        return c;
+    }
+
+    function compareData(cfg, acts, ctx) {
+        const mea = MEA[cfg.value.key];
+        const c = ensureCompare(cfg, acts, ctx);
+        const rows = scopedRows(cfg, acts, ctx);
+        const m2 = c.value2 ? MEA[c.value2] : null;
+        const sec = (rs) => {
+            if (!m2) return null;
+            const r2 = rs.filter((a) => (m2.keep ? m2.keep(a) : true));
+            return r2.length ? m2.fmt(aggregate(r2, m2, m2.aggs.includes("avg") ? "avg" : m2.aggs[0])) : null;
+        };
+        if (cfg.x) {
+            const d = DIM[cfg.x];
+            const A = rows.filter((a) => d.get(a) === c.a);
+            const B = rows.filter((a) => (c.b === "__rest" ? d.get(a) !== c.a && d.get(a) != null : d.get(a) === c.b));
+            return {
+                c, mea, nA: A.length, nB: B.length,
+                vA: aggregate(A, mea, cfg.value.agg), vB: aggregate(B, mea, cfg.value.agg),
+                sA: sec(A), sB: sec(B),
+                labelA: c.labelA || c.a || "A",
+                labelB: c.labelB || (c.b === "__rest" ? `Hors « ${c.a} »` : c.b),
+            };
+        }
+        return { c, mea, nA: rows.length, nB: null, vA: aggregate(rows, mea, cfg.value.agg), vB: c.target, sA: sec(rows), sB: null, labelA: c.labelA || "Réalisé", labelB: c.labelB || "Cible", target: true };
+    }
+
+    function deltaText(mea, d, pct) {
+        if (d == null || !isFinite(d)) return "—";
+        if (pct) return F.signed(d, 1, " %");
+        if (mea.key === "allure") return F.signed(d, 1, " s/km");
+        if (mea.pct || mea.unit === "%") return F.signed(d, 1, " pts");
+        if (mea.key === "ef") return F.signed(d, 3);
+        const digits = Math.abs(d) < 10 ? 1 : 0;
+        return F.signed(d, digits, mea.unit ? " " + mea.unit : "");
+    }
+
+    function autoSubtitle(cfg) {
+        const mea = MEA[cfg.value.key];
+        const f = Object.entries(cfg.filters || {}).filter(([, v]) => v && v.length).map(([, v]) => v.join(", ").toLowerCase());
+        let t = mea.label + (f.length ? ` · ${f.join(" · ")}` : "");
+        if (cfg.x) t += ` selon ${DIM[cfg.x].label.toLowerCase()}`;
+        return t;
+    }
+
+    /** Carte au format « analyse croisée » (utilisée dans le studio et sur la vue d'ensemble). */
+    function renderInsightCard(cfg, acts, ctx, h, opts = {}) {
+        const r = compareData(cfg, acts, ctx);
+        const { c, mea } = r;
+        const empty = !r.nA || r.vA == null || r.vB == null;
+        const headline = empty ? "—"
+            : r.target ? mea.fmt(r.vA)
+            : deltaText(mea, c.mode === "pct" ? ((r.vA - r.vB) / r.vB) * 100 : r.vA - r.vB, c.mode === "pct");
+        const withBars = r.target || (!mea.zeroless && !mea.weighted);
+        const max = Math.max(Math.abs(r.vA || 0), Math.abs(r.vB || 0)) || 1;
+        const line = (label, v, meta, color) => h("div", { class: "dash-cmp-row" },
+            h("span", { class: "dash-cmp-label" }, label),
+            withBars
+                ? h("span", { class: "dash-cmp-track" }, h("span", { class: "dash-cmp-bar", style: `width:${((Math.abs(v || 0) / max) * 100).toFixed(1)}%;background:${color}` }))
+                : h("span", { class: "dash-cmp-meta" }, meta || ""),
+            h("strong", { class: "dash-cmp-value" }, v == null ? "—" : mea.fmt(v)));
+        const accent = opts.color || "#3987e5";
+        const weeks = Math.round(((ctx.end - ctx.from) / 86400000 + 1) / 7);
+        const foot = empty ? "Pas assez de données sur la période"
+            : r.target ? `n = ${r.nA} · ${weeks} sem.`
+            : `n = ${r.nA} vs ${r.nB} · ${weeks} sem.`;
+        return h("article", { class: `dash-insight ${opts.className || ""}` },
+            h("div", { class: "dash-insight-top" }, h("div", { class: "dash-insight-tag" }, cfg.title || autoTitle(cfg)), opts.actions || null),
+            h("div", { class: "dash-insight-value" }, headline),
+            h("div", { class: "dash-insight-label" }, cfg.subtitle || autoSubtitle(cfg)),
+            h("div", { class: "dash-cmp" },
+                line(r.labelA, r.vA, r.sA, accent),
+                line(r.labelB, r.vB, r.sB, "#5a5a66")),
+            h("div", { class: "dash-insight-method" }, foot, h("span", { class: "dash-insight-origin" }, "Studio")));
+    }
+
+    /** Analyses croisées par défaut : construites avec le studio, modifiables comme n'importe quel KPI. */
+    const DEFAULT_INSIGHTS = [
+        { title: "Tennis → Course", subtitle: "Allure des footings le lendemain d'un tennis", x: "veille", value: { key: "allure", agg: "weighted" }, legend: null, filters: { type: ["Footing"] }, visual: "compare", compare: { a: "Tennis", b: "__rest", labelA: "Après tennis", labelB: "Sans tennis", mode: "abs", value2: "fc" } },
+        { title: "Golf → Sortie longue", subtitle: "Distance de la sortie longue en semaine de golf", x: "golfWeek", value: { key: "distance", agg: "avg" }, legend: null, filters: { type: ["Sortie longue"] }, visual: "compare", compare: { a: "Oui", b: "Non", labelA: "Semaine golf", labelB: "Sans golf", mode: "abs" } },
+        { title: "Efficacité aérobie", subtitle: "Vitesse par battement cardiaque, footings et sorties longues", x: "phase", value: { key: "ef", agg: "avg" }, legend: null, filters: {}, visual: "compare", compare: { a: "Fin", b: "Début", labelA: "Fin de période", labelB: "Début de période", mode: "pct" } },
+        { title: "Polarisation course", subtitle: "Temps de course en basse intensité (Z1–Z2)", x: null, value: { key: "basseIntensite", agg: "ratio" }, legend: null, filters: {}, visual: "compare", compare: { target: 80, labelA: "Réalisé", labelB: "Cible 80/20", mode: "abs" } },
+    ];
+
     /** Ligne de synthèse façon dashboard : max, min, écart. */
     function summary(r, h) {
         if (!r || !r.xd || r.ld || r.labels.length < 2) return null;
@@ -327,7 +462,7 @@ veille AS (
     function clone(c) { return JSON.parse(JSON.stringify(c)); }
 
     function mount(host, api) {
-        const { h, acts, ctx, sport, onPin, pinsCount } = api;
+        const { h, acts, ctx, sport, onPin, pinsCount, editing } = api;
         host.replaceChildren();
 
         const rerender = () => mount(host, api);
@@ -418,9 +553,40 @@ veille AS (
             onclick: () => set({ visual: v.key }),
         }, svgIcon(h, v.icon), h("span", {}, v.label))));
 
+        // Réglages spécifiques au visuel « Comparaison »
+        let compareSettings = null;
+        if (cfg.visual === "compare" && cfg.value) {
+            const c = ensureCompare(cfg, acts, ctx);
+            const setC = (patch) => set({ compare: { ...c, ...patch } });
+            const select = (id, label, options, value, onChange) => h("label", { class: "studio-set", for: id }, h("span", {}, label),
+                h("select", { id, class: "studio-agg", onchange: (e) => onChange(e.target.value) },
+                    options.map(([v, t]) => { const o = h("option", { value: v }, t); if (v === (value ?? "")) o.selected = true; return o; })));
+            const input = (id, label, value, onChange, type = "text") => {
+                const el = h("input", { id, type, class: "studio-input", value: value ?? "" });
+                el.addEventListener("change", (e) => onChange(e.target.value));
+                return h("label", { class: "studio-set", for: id }, h("span", {}, label), el);
+            };
+            const vals = axisValues(cfg, acts, ctx).map((v) => [v, DIM[cfg.x]?.time ? timeLabel(DIM[cfg.x], v) : v]);
+            compareSettings = h("div", { class: "studio-compare-set" },
+                h("div", { class: "studio-panel-title" }, "Comparaison"),
+                ...(cfg.x ? [
+                    select("cmp-a", "Groupe A", vals, c.a, (v) => setC({ a: v })),
+                    select("cmp-b", "Groupe B", [["__rest", "Toutes les autres valeurs"], ...vals.filter(([v]) => v !== c.a)], c.b, (v) => setC({ b: v })),
+                    input("cmp-la", "Libellé A", c.labelA, (v) => setC({ labelA: v })),
+                    input("cmp-lb", "Libellé B", c.labelB, (v) => setC({ labelB: v })),
+                    select("cmp-mode", "Écart affiché", [["abs", "En valeur (A − B)"], ["pct", "En % de B"]], c.mode, (v) => setC({ mode: v })),
+                ] : [
+                    input("cmp-target", "Cible à comparer", c.target, (v) => setC({ target: v === "" ? null : Number(v) }), "number"),
+                    h("p", { class: "studio-set-hint" }, "Sans axe, la carte compare la valeur à une cible. Dépose une dimension dans « Axe » pour comparer deux groupes."),
+                ]),
+                select("cmp-v2", "Indicateur secondaire", [["", "Aucun"], ...MEASURES.filter((m) => m.key !== cfg.value.key && m.zeroless).map((m) => [m.key, m.label])], c.value2, (v) => setC({ value2: v || null })),
+                input("cmp-sub", "Description", cfg.subtitle || autoSubtitle(cfg), (v) => set({ subtitle: v.trim() || null })));
+        }
+
         const build = h("aside", { class: "studio-panel studio-build" },
             h("div", { class: "studio-panel-title" }, "Visuel"),
             visuals,
+            compareSettings,
             h("div", { class: "studio-panel-title" }, "Construction"),
             well("value", "Valeur", "mea", cfg.value ? pill(MEA[cfg.value.key].label, () => set({ value: null }), aggSelect) : null),
             well("x", "Axe", "dim", cfg.x ? pill(DIM[cfg.x].label, () => set({ x: null })) : null),
@@ -435,7 +601,8 @@ veille AS (
             h("div", { class: "studio-canvas-head" }, title,
                 h("div", { class: "studio-actions" },
                     h("button", { type: "button", class: "dash-btn ghost", onclick: () => { cfg = { x: null, value: null, legend: null, filters: {}, visual: "bar", title: null }; rerender(); } }, "Réinitialiser"),
-                    h("button", { type: "button", class: "dash-btn primary", disabled: cfg.value ? null : "disabled", onclick: () => { onPin({ ...clone(cfg), title: title.value.trim() || autoTitle(cfg) }); } }, "Épingler au dashboard"))),
+                    h("button", { type: "button", class: "dash-btn primary", disabled: cfg.value ? null : "disabled", onclick: () => { onPin({ ...clone(cfg), compare: cfg.visual === "compare" ? ensureCompare(cfg, acts, ctx) : cfg.compare, title: title.value.trim() || autoTitle(cfg) }); } },
+                        editing ? "Mettre à jour la carte" : cfg.visual === "compare" ? "Ajouter aux analyses croisées" : "Épingler au dashboard"))),
             visualHost);
 
         const templates = h("div", { class: "studio-templates" }, h("span", { class: "studio-templates-label" }, "Partir d'un modèle"),
@@ -463,7 +630,8 @@ veille AS (
                 h("summary", {}, "Requête BigQuery générée", copy),
                 sqlNode(h, sql)));
         }
-        if (pinsCount) canvas.append(h("p", { class: "dash-footnote" }, `${pinsCount} KPI épinglé${pinsCount > 1 ? "s" : ""} sur la vue d'ensemble.`));
+        if (editing) canvas.prepend(h("div", { class: "studio-editing" }, "Modification d'une carte existante · « Mettre à jour la carte » remplace la version du dashboard."));
+        else if (pinsCount) canvas.append(h("p", { class: "dash-footnote" }, `${pinsCount} KPI sur la vue d'ensemble.`));
     }
 
     function svgIcon(h, d) {
@@ -476,5 +644,8 @@ veille AS (
         return svg;
     }
 
-    global.AltarunStudio = { mount, renderVisual, autoTitle, DIMS, MEASURES, TEMPLATES };
+    function load(newCfg) { cfg = clone(newCfg); }
+    function reset(visual) { cfg = { x: null, value: null, legend: null, filters: {}, visual: visual || "bar", title: null }; }
+
+    global.AltarunStudio = { mount, load, reset, renderVisual, renderInsightCard, autoTitle, DEFAULT_INSIGHTS, DIMS, MEASURES, TEMPLATES };
 })(window);

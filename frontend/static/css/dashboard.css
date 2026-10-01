@@ -754,3 +754,100 @@
     white-space: pre;
 }
 .studio-sql-code .kw { color: #ff8a5c; font-weight: 600; }
+
+/* ---------- Analyses croisées issues du Studio ---------- */
+.dash-insight-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.dash-insight-actions { display: flex; gap: 4px; opacity: 0.55; transition: opacity 0.15s; }
+.dash-insight:hover .dash-insight-actions, .dash-insight:focus-within .dash-insight-actions { opacity: 1; }
+.dash-icon-btn {
+    padding: 2px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--color-border);
+    background: transparent;
+    color: var(--color-text-secondary);
+    font: inherit;
+    font-size: 11.5px;
+    line-height: 1.5;
+    cursor: pointer;
+}
+.dash-icon-btn:hover { color: var(--color-text-primary); border-color: var(--color-border-light); }
+.dash-icon-btn:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }
+.dash-insight-method { display: flex; justify-content: space-between; gap: 8px; }
+.dash-insight-origin {
+    padding: 0 7px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 107, 53, 0.35);
+    color: var(--color-primary);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+.dash-insight-add {
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    min-height: 200px;
+    border-style: dashed;
+    border-color: var(--color-border-light);
+    background: transparent;
+    color: var(--color-text-secondary);
+    font: inherit;
+    font-size: 12.5px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+}
+.dash-insight-add strong { color: var(--color-text-primary); font-size: 14px; }
+.dash-insight-add:hover { border-color: var(--color-primary); background: var(--color-primary-light); }
+.dash-insight-add:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.dash-insight-add-icon {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--color-primary-lighter);
+    color: var(--color-primary);
+    font-size: 20px;
+    font-weight: 700;
+}
+
+/* ---------- Studio : visuel Comparaison ---------- */
+.studio-visuals { grid-template-columns: repeat(4, 1fr); }
+.studio-compare { max-width: 440px; }
+.studio-compare .dash-insight { background: var(--dash-surface-2); }
+.studio-compare-caption { margin-top: 18px; color: var(--dash-ink-muted); font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; }
+.studio-compare-set {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+    margin-bottom: 4px;
+    border-radius: 10px;
+    background: var(--dash-surface-2);
+    border: 1px solid var(--color-border);
+}
+.studio-set { display: flex; flex-direction: column; gap: 4px; font-size: 11.5px; color: var(--dash-ink-muted); }
+.studio-set .studio-agg, .studio-input {
+    width: 100%;
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-input);
+    color: var(--color-text-primary);
+    font: inherit;
+    font-size: 12.5px;
+}
+.studio-input:focus, .studio-set .studio-agg:focus { outline: none; border-color: var(--color-primary); }
+.studio-set-hint { color: var(--color-text-tertiary); font-size: 11.5px; line-height: 1.45; }
+.studio-editing {
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: var(--color-primary-light);
+    border: 1px solid rgba(255, 107, 53, 0.35);
+    color: var(--color-text-primary);
+    font-size: 12.5px;
+}
+.dash-head-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.dash-btn.small { padding: 5px 12px; font-size: 12px; }
+.dash-icon-btn { min-width: 24px; }

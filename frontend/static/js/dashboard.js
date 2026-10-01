@@ -32,14 +32,29 @@
     const DOW = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
     const RUN_TYPES = { easy: "Footing", long: "Sortie longue", intervals: "Fractionné", tempo: "Tempo", race: "Compétition" };
 
-    const state = { sport: "all", weeks: 12, view: "overview", pins: loadPins() };
+    const state = { sport: "all", weeks: 12, view: "overview", pins: loadPins(), editIndex: null };
 
     // KPI épinglés depuis le Studio (préférence locale du navigateur ; à terme : table API)
+    // Les analyses croisées par défaut sont elles-mêmes des KPI du Studio (visuel « Comparaison »).
+    function defaultPins() {
+        return JSON.parse(JSON.stringify((window.AltarunStudio && window.AltarunStudio.DEFAULT_INSIGHTS) || []));
+    }
     function loadPins() {
-        try { return JSON.parse(localStorage.getItem("altarun-pins") || "[]"); } catch (e) { return []; }
+        try {
+            const raw = localStorage.getItem("altarun-pins-v2");
+            return raw ? JSON.parse(raw) : defaultPins();
+        } catch (e) { return defaultPins(); }
     }
     function savePins() {
-        try { localStorage.setItem("altarun-pins", JSON.stringify(state.pins)); } catch (e) { /* stockage indisponible */ }
+        try { localStorage.setItem("altarun-pins-v2", JSON.stringify(state.pins)); } catch (e) { /* stockage indisponible */ }
+    }
+    function openStudio(pinIndex) {
+        if (pinIndex != null) window.AltarunStudio.load(state.pins[pinIndex]);
+        else window.AltarunStudio.reset("compare");
+        state.editIndex = pinIndex;
+        state.view = "studio";
+        update();
+        window.scrollTo({ top: 0, behavior: "smooth" });
     }
     let DATA = null;
 
@@ -146,27 +161,6 @@
         return node;
     }
 
-    function insight(i) {
-        const body = [];
-        if (i.rows) {
-            body.push(h("div", { class: "dash-cmp" }, i.rows.map((r) => h("div", { class: "dash-cmp-row" },
-                h("span", { class: "dash-cmp-label" }, r.label),
-                r.bar != null
-                    ? h("span", { class: "dash-cmp-track" }, h("span", { class: "dash-cmp-bar", style: `width:${(r.bar * 100).toFixed(1)}%;background:${r.color}` }))
-                    : h("span", { class: "dash-cmp-meta" }, r.meta || ""),
-                h("strong", { class: "dash-cmp-value" }, r.value)))));
-        }
-        if (i.stack) {
-            body.push(h("div", { class: "dash-stack" }, i.stack.map((p) => h("span", { class: "dash-stack-seg", style: `flex:${p.v.toFixed(2)};background:${p.color}`, title: `${p.label} : ${F.fr(p.v)} %` }))),
-                h("div", { class: "dash-stack-legend" }, i.stack.map((p) => h("span", {}, h("span", { class: "dash-legend-key", style: `--c:${p.color}` }), `${p.label} ${F.fr(p.v)} %`))));
-        }
-        return h("article", { class: "dash-insight" },
-            h("div", { class: "dash-insight-tag" }, i.tag),
-            h("div", { class: "dash-insight-value" }, i.value),
-            h("div", { class: "dash-insight-label" }, i.label),
-            ...body,
-            h("div", { class: "dash-insight-method" }, i.foot));
-    }
 
     // ------------------------------------------------------------- dimensions dérivées
     /**
@@ -438,98 +432,27 @@
     // Analyses croisées (le cœur « data » du dashboard)
     // =====================================================================
     function renderInsights(grid, ctx, isAll) {
-        const { all, end } = ctx;
-        // Au moins 26 semaines d'historique pour que les écarts soient robustes.
-        const nW = Math.max(ctx.weeks, 26);
-        const winFrom = M.addDays(end, -nW * 7 + 1);
-        const pool = M.inRange(all, winFrom, end);
-        const runs = pool.filter((a) => a.sport_type === "Run" && a.workout_type !== "race");
-        const tennisDays = new Set(pool.filter((a) => a.sport_type === "Tennis").map((a) => a.day));
-        const paceOf = (rs) => (M.sum(rs, (r) => r.moving_time_min) * 60) / (M.sum(rs, (r) => r.distance_km) || 1);
-        const items = [];
-
-        // 1. Tennis la veille -> allure des footings (même type de séance)
-        {
-            const easy = runs.filter((r) => r.workout_type === "easy");
-            const after = easy.filter((r) => tennisDays.has(M.dayKey(M.addDays(r.date, -1))));
-            const fresh = easy.filter((r) => !tennisDays.has(M.dayKey(M.addDays(r.date, -1))));
-            if (after.length > 2 && fresh.length > 2) {
-                const pA = paceOf(after), pF = paceOf(fresh);
-                items.push({
-                    tag: "Tennis → Course",
-                    value: `${F.signed(pA - pF, 1)} s/km`,
-                    label: "Allure des footings le lendemain d'un tennis",
-                    rows: [
-                        { label: "Après tennis", value: `${F.pace(pA)}/km`, meta: `${F.fr(M.mean(after, (r) => r.avg_hr))} bpm` },
-                        { label: "Sans tennis", value: `${F.pace(pF)}/km`, meta: `${F.fr(M.mean(fresh, (r) => r.avg_hr))} bpm` },
-                    ],
-                    foot: `n = ${after.length} vs ${fresh.length} footings · ${nW} sem.`,
-                });
-            }
-        }
-
-        // 2. Semaine de golf -> sortie longue
-        {
-            const golfWeeks = new Set(pool.filter((a) => a.sport_type === "Golf").map((a) => M.dayKey(M.mondayOf(a.date))));
-            const longs = runs.filter((r) => r.workout_type === "long");
-            const g = longs.filter((r) => golfWeeks.has(M.dayKey(M.mondayOf(r.date))));
-            const ng = longs.filter((r) => !golfWeeks.has(M.dayKey(M.mondayOf(r.date))));
-            if (g.length > 2 && ng.length > 2) {
-                const dG = M.mean(g, (r) => r.distance_km), dN = M.mean(ng, (r) => r.distance_km);
-                items.push({
-                    tag: "Golf → Sortie longue",
-                    value: `${F.signed(dG - dN, 1)} km`,
-                    label: "Distance de la sortie longue en semaine de golf",
-                    rows: [
-                        { label: "Semaine golf", value: `${F.fr(dG, 1)} km`, bar: dG / Math.max(dG, dN), color: M.SPORT.Golf.color },
-                        { label: "Sans golf", value: `${F.fr(dN, 1)} km`, bar: dN / Math.max(dG, dN), color: "#5a5a66" },
-                    ],
-                    foot: `n = ${g.length} vs ${ng.length} sorties longues · ${nW} sem.`,
-                });
-            }
-        }
-
-        // 3. Efficacité aérobie (tendance)
-        {
-            const easy = runs.filter((r) => r.workout_type === "easy" || r.workout_type === "long");
-            if (easy.length > 6) {
-                const x = easy.map((r) => (r.date - winFrom) / M.DAY), y = easy.map(M.efficiency);
-                const lr = M.linreg(x, y);
-                const v0 = lr.intercept, v1 = lr.intercept + lr.slope * ((end - winFrom) / M.DAY);
-                items.push({
-                    tag: "Efficacité aérobie",
-                    value: `${F.signed(((v1 - v0) / v0) * 100, 1)} %`,
-                    label: "Vitesse par battement cardiaque, footings et sorties longues",
-                    rows: [
-                        { label: "Début de période", value: `${F.fr(v0, 3)}`, meta: "m/min/bpm" },
-                        { label: "Aujourd'hui", value: `${F.fr(v1, 3)}`, meta: "m/min/bpm" },
-                    ],
-                    foot: `Tendance linéaire · n = ${easy.length} sorties · ${nW} sem.`,
-                });
-            }
-        }
-
-        // 4. Polarisation (course)
-        {
-            const z = [0, 1, 2, 3, 4].map((i) => M.sum(runs, (r) => r.hr_zones_min[i]));
-            const tot = M.sum(z) || 1;
-            const parts = [
-                { label: "Z1–Z2", v: ((z[0] + z[1]) / tot) * 100, color: ZONES[1].color },
-                { label: "Z3", v: (z[2] / tot) * 100, color: ZONES[2].color },
-                { label: "Z4–Z5", v: ((z[3] + z[4]) / tot) * 100, color: ZONES[3].color },
-            ];
-            items.push({
-                tag: "Polarisation course",
-                value: `${F.fr(parts[0].v)} %`,
-                label: "Temps de course en basse intensité (cible 80 %)",
-                stack: parts,
-                foot: `Zones à 60/70/80/90 % de FC max · ${nW} sem.`,
-            });
-        }
-
-        if (!items.length) return;
-        const c = card("Analyses croisées", isAll ? "Effets mesurés entre sports" : "Facteurs qui influencent la course", { span: 12 });
-        c.body.append(h("div", { class: "dash-insights" }, items.map(insight)));
+        const S = window.AltarunStudio;
+        if (!S) return;
+        const items = state.pins.map((p, i) => ({ p, i })).filter(({ p }) => p.visual === "compare");
+        const c = card("Analyses croisées", isAll ? "Comparaisons construites dans le Studio KPI" : "Facteurs qui influencent la course", { span: 12 });
+        const restore = h("button", { type: "button", class: "dash-link-btn", onclick: () => {
+            state.pins = state.pins.filter((p) => p.visual !== "compare").concat(defaultPins()); savePins(); update();
+        } }, "Restaurer par défaut");
+        const addBtn = h("button", { type: "button", class: "dash-btn primary small", onclick: () => openStudio(null) }, "+ Nouvelle analyse");
+        c.root.querySelector(".dash-card-head").append(h("div", { class: "dash-head-actions" }, restore, addBtn));
+        const cards = items.map(({ p, i }) => S.renderInsightCard(p, ctx.cur, ctx, h, {
+            color: "#3987e5",
+            actions: h("div", { class: "dash-insight-actions" },
+                h("button", { type: "button", class: "dash-icon-btn", title: "Modifier dans le Studio", "aria-label": `Modifier ${p.title}`, onclick: () => openStudio(i) }, "✎"),
+                h("button", { type: "button", class: "dash-icon-btn", title: "Retirer du dashboard", "aria-label": `Retirer ${p.title}`, onclick: () => { state.pins.splice(i, 1); savePins(); update(); } }, "×")),
+        }));
+        const add = h("button", { type: "button", class: "dash-insight dash-insight-add", onclick: () => openStudio(null) },
+            h("span", { class: "dash-insight-add-icon", "aria-hidden": "true" }, "+"),
+            h("strong", {}, "Nouvelle analyse croisée"),
+            h("span", {}, "Construire une comparaison dans le Studio KPI"));
+        // La tuile d'ajout ne sert que d'état vide ; sinon le bouton d'en-tête suffit.
+        c.body.append(h("div", { class: "dash-insights" }, cards.length ? cards : add));
         grid.append(c.root);
     }
 
@@ -948,19 +871,21 @@
         const views = [{ key: "overview", label: "Vue d'ensemble" }, { key: "studio", label: "Studio KPI" }];
         host.replaceChildren(...views.map((v) => h("button", {
             type: "button", role: "tab", class: "dash-view-tab", "aria-selected": String(state.view === v.key),
-            onclick: () => { state.view = v.key; update(); },
-        }, v.label, v.key === "studio" && state.pins.length ? h("span", { class: "dash-view-count" }, String(state.pins.length)) : null)));
+            onclick: () => { state.view = v.key; state.editIndex = null; update(); },
+        }, v.label)));
     }
 
     /** Cartes des KPI épinglés, recalculées avec les filtres courants. */
     function renderPins(body, ctx) {
-        if (!state.pins.length || !window.AltarunStudio) return;
+        const pins = state.pins.map((p, i) => ({ p, i })).filter(({ p }) => p.visual !== "compare");
+        if (!pins.length || !window.AltarunStudio) return;
         const grid = h("div", { class: "dash-grid dash-pins" });
-        state.pins.forEach((pin, i) => {
-            const odd = state.pins.length % 2 === 1 && i === state.pins.length - 1;
+        pins.forEach(({ p: pin, i }, k) => {
+            const odd = pins.length % 2 === 1 && k === pins.length - 1;
             const c = card(pin.title, "KPI personnalisé · Studio", { span: odd ? 12 : 6 });
+            const edit = h("button", { type: "button", class: "dash-link-btn", onclick: () => openStudio(i) }, "Modifier");
             const remove = h("button", { type: "button", class: "dash-link-btn", onclick: () => { state.pins.splice(i, 1); savePins(); update(); } }, "Retirer");
-            c.root.querySelector(".dash-card-head").append(remove);
+            c.root.querySelector(".dash-card-head").append(edit, remove);
             grid.append(c.root);
             requestAnimationFrame(() => {
                 const out = window.AltarunStudio.renderVisual(c.body, pin, ctx.cur, ctx, h);
@@ -982,8 +907,14 @@
         body.replaceChildren();
         if (state.view === "studio" && window.AltarunStudio) {
             window.AltarunStudio.mount(body, {
-                h, acts: ctx.cur, ctx, sport: state.sport, pinsCount: state.pins.length,
-                onPin: (pin) => { state.pins.push(pin); savePins(); state.view = "overview"; update(); window.scrollTo({ top: 0, behavior: "smooth" }); },
+                h, acts: ctx.cur, ctx, sport: state.sport, pinsCount: state.pins.length, editing: state.editIndex != null,
+                onPin: (pin) => {
+                    if (state.editIndex != null) state.pins[state.editIndex] = pin; else state.pins.push(pin);
+                    savePins();
+                    state.editIndex = null; state.view = "overview"; update();
+                    const target = pin.visual === "compare" ? [...document.querySelectorAll(".dash-card h3")].find((x) => x.textContent === "Analyses croisées") : null;
+                    (target ? target.closest(".dash-card") : document.body).scrollIntoView({ behavior: "smooth", block: "start" });
+                },
             });
             return;
         }
