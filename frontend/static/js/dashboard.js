@@ -591,11 +591,13 @@
         }
         zonesCard(grid, ctx, "Run", 4);
         {
-            const c = card("Records & compétitions", "Courses officielles · 24 derniers mois", { span: 4 });
+            const c = card("Records & compétitions", "Courses officielles · 24 derniers mois · RP = record personnel", { span: 4 });
             grid.append(c.root);
             const races = M.inRange(ctx.all, M.addDays(ctx.end, -730), ctx.end).filter((a) => a.sport_type === "Run" && a.workout_type === "race").reverse();
+            const best = {};
+            races.forEach((r) => { const k = r.distance_km.toFixed(1); if (!best[k] || r.moving_time_min < best[k].moving_time_min) best[k] = r; });
             c.body.append(h("div", { class: "dash-list" }, races.map((r) => h("div", { class: "dash-list-row" },
-                h("div", {}, h("strong", {}, r.name), h("span", { class: "dash-muted" }, r.date.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }))),
+                h("div", {}, h("strong", {}, r.name, best[r.distance_km.toFixed(1)] === r ? h("span", { class: "dash-rp" }, "RP") : null), h("span", { class: "dash-muted" }, r.date.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }))),
                 h("div", { class: "dash-list-right" }, h("strong", {}, F.hms(r.moving_time_min * 60)), h("span", { class: "dash-muted" }, F.pace(r.avg_pace_s_per_km) + "/km"))))));
         }
         renderInsights(grid, ctx, false);
@@ -836,13 +838,14 @@
 
     function renderMeta(host, ctx) {
         const m = DATA.meta;
-        const src = m.source === "bigquery" ? `BigQuery · ${m.table || "fct_activities"}` : `fct_activities · jeu de démo (seed ${m.seed})`;
+        const sync = m.generated_at ? new Date(m.generated_at) : null;
+        const syncTxt = sync ? `synchronisé le ${sync.toLocaleDateString("fr-FR", { day: "numeric", month: "short" })} à ${sync.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}` : "";
         host.replaceChildren(
             h("span", {}, `Du ${ctx.from.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })} au ${ctx.end.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}`),
             h("span", { class: "dash-sep" }, "·"),
             h("span", {}, `${ctx.cur.length} activités`),
             h("span", { class: "dash-sep" }, "·"),
-            h("span", { class: "dash-muted" }, `Source : ${src} · schéma v${m.schema_version} · ${m.row_count} lignes`));
+            h("span", { class: "dash-muted" }, [m.table || "fct_activities", `${F.fr(m.row_count)} lignes`, syncTxt].filter(Boolean).join(" · ")));
     }
 
     function exportCsv() {

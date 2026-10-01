@@ -851,3 +851,14 @@
 .dash-head-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
 .dash-btn.small { padding: 5px 12px; font-size: 12px; }
 .dash-icon-btn { min-width: 24px; }
+.dash-rp {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 0 6px;
+    border-radius: 4px;
+    background: var(--color-primary-lighter);
+    color: var(--color-primary);
+    font-size: 10.5px;
+    font-weight: 700;
+    vertical-align: 2px;
+}

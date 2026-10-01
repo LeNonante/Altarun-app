@@ -128,8 +128,17 @@ class Generator:
         self.activities: list[Activity] = []
         self.golf_last_played = False
         self.half_marathon_day = date(2026, 3, 22)
-        self.ten_k_day = date(2026, 6, 7)
         self.prev_half_day = date(2025, 4, 6)
+        # Courses officielles : (nom, distance km, temps en secondes, FC moyenne)
+        # RP 5 km = 18'53" ; les autres chronos sont cohérents (équivalences de Riegel).
+        self.races = {
+            date(2025, 4, 6): ("Semi-marathon", 21.0975, 5500, 170),  # 1 h 31'40"
+            date(2025, 6, 15): ("5 km sur route", 5.0, 1181, 179),  # 19'41"
+            date(2025, 10, 12): ("10 km sur route", 10.0, 2465, 175),  # 41'05"
+            date(2026, 3, 22): ("Semi-marathon", 21.0975, 5232, 172),  # 1 h 27'12"
+            date(2026, 5, 10): ("5 km sur route", 5.0, 1133, 181),  # 18'53" (RP)
+            date(2026, 6, 7): ("10 km sur route", 10.0, 2366, 177),  # 39'26"
+        }
         self.vacation_weeks = {date(2025, 8, 11), date(2026, 8, 10)}
 
     # Progression : 0 au début de la fenêtre, 1 à la fin
@@ -154,11 +163,7 @@ class Generator:
 
         week_days = [monday + timedelta(days=i) for i in range(7)]
         race_day = next(
-            (
-                d
-                for d in week_days
-                if d in (self.half_marathon_day, self.ten_k_day, self.prev_half_day)
-            ),
+            (d for d in week_days if d in self.races),
             None,
         )
         taper = any(
@@ -171,15 +176,17 @@ class Generator:
 
         plan = [
             # (jour, type, part du volume, décalage d'allure s/km, FC moy, sd FC, heure)
-            (1, "intervals", 0.17, -24, 161, 11, (19, 5)),
-            (2, "easy", 0.16, +7, 136, 6, (7, 0)),
-            (3, "easy", 0.17, +6, 135, 6, (12, 30)),
-            (5, "easy", 0.15, +7, 136, 6, (9, 0)),
+            # Allures séance (moyenne de la séance, échauffement compris) :
+            # fractionné ~4'10", tempo ~4'25", sortie longue ~5'30", footing ~5'40"
+            (1, "intervals", 0.17, -70, 161, 11, (19, 5)),
+            (2, "easy", 0.16, +22, 136, 6, (7, 0)),
+            (3, "easy", 0.17, +21, 135, 6, (12, 30)),
+            (5, "easy", 0.15, +22, 136, 6, (9, 0)),
             # Week-end golf => sortie longue raccourcie (effet croisé injecté)
-            (6, "long", 0.29 if golf_week else 0.35, +9, 141, 6, (9, 0)),
+            (6, "long", 0.29 if golf_week else 0.35, +10, 141, 6, (9, 0)),
         ]
         if rng.random() < 0.35:  # tempo au seuil le jeudi certaines semaines
-            plan[2] = (3, "tempo", 0.17, -18, 164, 5, (12, 30))
+            plan[2] = (3, "tempo", 0.17, -55, 164, 5, (12, 30))
         if monday in self.vacation_weeks:
             plan = [plan[1], plan[3], plan[4]]
 
@@ -189,17 +196,16 @@ class Generator:
                 continue
             if race_day and wtype == "long":
                 day = race_day
-                is_half = race_day != self.ten_k_day
-                dist = 21.1 if is_half else 10.0
-                pace = base_pace - (34 if is_half else 47) + self.gauss(0, 3)
+                rname, dist, secs, rhr = self.races[race_day]
+                pace = secs / dist
                 self.add_run(
                     day,
                     at(day, 9, 30),
-                    "Semi-marathon" if is_half else "10 km sur route",
+                    rname,
                     "race",
                     dist,
                     pace,
-                    171 if is_half else 176,
+                    rhr,
                     5,
                     p,
                     tennis_days,
@@ -234,7 +240,8 @@ class Generator:
             pace += self.gauss(8, 2)
             hr += 3
         # Gain d'efficacité aérobie : même effort, FC plus basse au fil du temps
-        hr = hr - 5 * p + self.gauss(0, 2)
+        if wtype != "race":
+            hr = hr - 5 * p + self.gauss(0, 2)
         minutes = dist * pace / 60
         self.activities.append(
             Activity(
@@ -452,11 +459,15 @@ def calibrate(acts: list[Activity]) -> None:
         a.distance_km *= k
         a.moving_time_min *= k
 
+    # Recalage de l'allure moyenne : seules les séances d'entraînement sont ajustées,
+    # les chronos de compétition restent exacts (RP).
     win_runs = [a for a in in_win if a.sport_type == "Run"]
-    pace = sum(a.moving_time_min for a in win_runs) * 60 / sum(a.distance_km for a in win_runs)
-    kp = TARGET_RUN_PACE_S_PER_KM / pace
+    race_min = sum(a.moving_time_min for a in win_runs if a.workout_type == "race")
+    train_min = sum(a.moving_time_min for a in win_runs if a.workout_type != "race")
+    total_km = sum(a.distance_km for a in win_runs)
+    kp = (TARGET_RUN_PACE_S_PER_KM * total_km / 60 - race_min) / train_min
     for a in acts:
-        if a.sport_type == "Run":
+        if a.sport_type == "Run" and a.workout_type != "race":
             a.moving_time_min *= kp
 
     for sport, target_h in TARGET_HOURS_PER_WEEK.items():
@@ -478,7 +489,7 @@ def to_record(i: int, a: Activity) -> dict:
         "name": a.name,
         "workout_type": a.workout_type,
         "distance_km": round(a.distance_km, 2) if a.distance_km is not None else None,
-        "moving_time_min": round(a.moving_time_min, 1),
+        "moving_time_min": round(a.moving_time_min, 2),
         "elevation_gain_m": round(a.elevation_gain_m) if a.elevation_gain_m is not None else None,
         "avg_hr": round(a.avg_hr),
         "max_hr": round(max(a.max_hr, a.avg_hr + 5)),
