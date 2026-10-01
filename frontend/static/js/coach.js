@@ -304,10 +304,13 @@
             "Où j'en suis pour mon objectif semi ?",
         ].map((q) => h("button", { type: "button", class: "coach-chip", onclick: () => ask(q) }, q)));
 
+        // Bouton discret : revient à l'historique de départ (utile pour rejouer une démo)
+        const reset = h("button", { type: "button", class: "coach-reset", title: "Réinitialiser la conversation", "aria-label": "Réinitialiser la conversation", onclick: () => render(root) }, "↺");
         const chat = h("section", { class: "coach-chat" },
             h("header", { class: "coach-head" },
                 h("div", { class: "coach-avatar big", "aria-hidden": "true" }, "A"),
-                h("div", {}, h("strong", {}, "Coach Altarun"), h("span", { class: "coach-status" }, `Basé sur tes ${F.fr(c.D.acts.length)} activités · mis à jour ce matin`))),
+                h("div", {}, h("strong", {}, "Coach Altarun"), h("span", { class: "coach-status" }, `Basé sur tes ${F.fr(c.D.acts.length)} activités · mis à jour ce matin`)),
+                reset),
             log, chips, form);
 
         // Panneau de contexte : ce que le coach « voit »

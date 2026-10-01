@@ -220,3 +220,18 @@
 .coach-side-row { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--color-border); }
 .coach-side-row:last-child { border-bottom: 0; }
 .coach-side-row strong { color: var(--color-text-primary); font-variant-numeric: tabular-nums; text-align: right; }
+.coach-reset {
+    margin-left: auto;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 0;
+    background: transparent;
+    color: var(--color-text-tertiary);
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0.45;
+    transition: opacity 0.15s, color 0.15s, background 0.15s;
+}
+.coach-reset:hover, .coach-reset:focus-visible { opacity: 1; color: var(--color-text-primary); background: rgba(255, 255, 255, 0.06); outline: none; }
