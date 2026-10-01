@@ -182,6 +182,7 @@ def index():
     context["is_admin"] = infos.get("is_admin", False)
     context["is_strava_connected"] = infos.get("is_strava_connected", False)
     context["strava_login_url"] = URL_LOGIN_STRAVA
+    context["first_name"] = infos.get("first_name") or current_user.id
     return render_template('index.html', **context)
 
 @app.route('/dashboard/data')
