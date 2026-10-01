@@ -7,9 +7,9 @@ Le dashboard de la page d'accueil consomme le même contrat de données que la v
 dépendre de l'ETL (ni exposer de vraies données), on génère un jeu **déterministe**
 (seed fixe) et **calibré** sur un profil d'athlète réaliste :
 
-* Course à pied : ~65 km / semaine à ~5'20"/km de moyenne, 5 sorties typées
-  (fractionné/tempo, footings, sortie longue), progression d'allure sur l'année,
-  une course objectif (semi) et un 10 km.
+* Course à pied : ~50 km / semaine à ~5'20"/km de moyenne, 4 sorties typées
+  (fractionné, tempo ou footing, footing, sortie longue), progression d'allure,
+  courses officielles (5 km, 10 km, semi).
 * Tennis : ~7 h / semaine, 3 à 5 séances (entraînements + matchs avec score).
 * Natation : ~1 h / semaine, bassin 25 m, SWOLF.
 * Golf : ~2 h / semaine en moyenne, mais joué environ une semaine sur deux (18 ou 9 trous),
@@ -18,7 +18,8 @@ dépendre de l'ETL (ni exposer de vraies données), on génère un jeu **déterm
 
 Effets croisés volontairement injectés (pour que les KPI croisés aient du sens) :
 
-* une sortie course le lendemain d'un tennis est un peu plus lente et plus « chère » en FC ;
+* allure de course selon l'activité de la veille : repos (plus rapide) < autre sport
+  < course < tennis (plus lent, FC plus haute) ;
 * l'efficacité aérobie (vitesse / FC) s'améliore au fil des mois ;
 * les semaines de golf (week-end), la sortie longue est raccourcie ;
 * semaine de vacances en août (moins de course, plus de natation).
@@ -28,7 +29,7 @@ Usage ::
     python scripts/generate_mock_activities.py            # écrit frontend/data/mock/fct_activities.json
     python scripts/generate_mock_activities.py --seed 7   # autre tirage, mêmes moyennes
 
-Volume total visé : ~17 h / semaine tous sports confondus.
+Volume total visé : ~15 h / semaine tous sports confondus, 2 séances maximum par jour.
 
 Les moyennes cibles sont recalées sur les 52 dernières semaines complètes, puis vérifiées
 (le script échoue si l'écart dépasse la tolérance).
@@ -57,7 +58,7 @@ HR_REST = 50
 WEIGHT_KG = 72
 
 # --- Cibles (moyennes sur les 52 dernières semaines complètes) --------------------------
-TARGET_RUN_KM_PER_WEEK = 65.0
+TARGET_RUN_KM_PER_WEEK = 50.0
 TARGET_RUN_PACE_S_PER_KM = 320.0  # 5'20"/km
 TARGET_HOURS_PER_WEEK = {
     "Tennis": 7.0,
@@ -153,97 +154,176 @@ class Generator:
             v = min(hi, v)
         return v
 
-    def run_week(self, monday: date, tennis_days: set[date], golf_week: bool) -> None:
+    # ------------------------------------------------------------------ planning
+    def plan_week(self, monday: date) -> dict:
+        """Répartit les séances de la semaine sur les jours.
+
+        Règles : 2 séances maximum par jour, 1 course maximum par jour, sortie longue le
+        week-end. Les jours sont tirés au hasard pour que le type de séance de course ne
+        dépende pas de l'activité de la veille (sinon les KPI « veille » seraient biaisés).
+        """
+        rng = self.rng
+        vac = monday in self.vacation_weeks
+        load = dict.fromkeys(range(7), 0)
+        race = next((i for i in range(7) if monday + timedelta(days=i) in self.races), None)
+
+        # Semaine en cours : planning fixe, cohérent avec l'historique du coach
+        if monday == END_DATE - timedelta(days=END_DATE.weekday()):
+            return {
+                "runs": {1: "intervals", 2: "easy"},
+                "tennis": {2: "match"},
+                "swim": [],
+                "climb": [0],
+                "golf": None,
+            }
+
+        types = (
+            ["easy", "easy", "long"]
+            if vac
+            else ["intervals", "tempo" if rng.random() < 0.35 else "easy", "easy", "long"]
+        )
+        long_day = race if race is not None else rng.choice([5, 6])
+        others = rng.sample([d for d in range(7) if d != long_day], len(types) - 1)
+        rest_types = types[:-1]
+        rng.shuffle(rest_types)
+        runs = {long_day: "long", **dict(zip(others, rest_types, strict=True))}
+        for d in runs:
+            load[d] += 1
+
+        def pick(n: int, allowed=range(7), exclude=()) -> list[int]:
+            free = [d for d in allowed if load[d] < 2 and d not in exclude]
+            chosen = rng.sample(free, min(n, len(free)))
+            for d in chosen:
+                load[d] += 1
+            return sorted(chosen)
+
+        golf = None
+        if not vac and self.golf_plays(monday):
+            g = pick(1, allowed=[5, 6], exclude=[race] if race is not None else [])
+            golf = g[0] if g else None
+        n_tennis = 0 if vac else rng.choices([3, 4, 5], weights=[0.25, 0.55, 0.2])[0]
+        # Pas de tennis la veille d'une séance de qualité (fractionné, tempo) ni d'une course
+        no_tennis = [d - 1 for d, t in runs.items() if t in ("intervals", "tempo")]
+        if race:
+            no_tennis.append(race - 1)
+        tennis_days = pick(n_tennis, exclude=no_tennis)
+        tennis = {d: ("match" if rng.random() < 0.4 else "training") for d in tennis_days}
+        swim = pick(2 if vac else (1 if rng.random() > 0.08 else 0))
+        climb = pick(0 if vac or rng.random() < 0.08 else 1)
+        return {"runs": runs, "tennis": tennis, "swim": swim, "climb": climb, "golf": golf}
+
+    def golf_plays(self, monday: date) -> bool:
+        rng = self.rng
+        # ~une semaine sur deux, avec un peu d'irrégularité
+        play = rng.random() < (0.18 if self.golf_last_played else 0.85)
+        if monday.month in (12, 1, 2) and rng.random() < 0.3:
+            play = False
+        self.golf_last_played = play
+        return play
+
+    def record(self, act: Activity) -> None:
+        self.activities.append(act)
+        self.by_day.setdefault(act.start.date(), set()).add(act.sport_type)
+
+    # ------------------------------------------------------------------ course à pied
+    def veille(self, day: date) -> str:
+        prev = self.by_day.get(day - timedelta(days=1), set())
+        if "Tennis" in prev:
+            return "tennis"
+        if "Run" in prev:
+            return "course"
+        return "autre" if prev else "repos"
+
+    def run_week(self, monday: date, plan: dict) -> None:
         rng = self.rng
         p = self.progress(monday)
-        # Volume : saison 1 ~58 km, saison 2 ~65 km ; bruit modéré (sigma ~5 %)
-        base_km = (57.0 + 9.0 * p) * self.gauss(1, 0.05, 0.88, 1.12)
+        # Volume : saison 1 ~45 km, saison 2 ~51 km ; bruit modéré (sigma ~5 %)
+        base_km = (45.0 + 6.0 * p) * self.gauss(1, 0.05, 0.88, 1.12)
         # Base d'allure : 5'34" -> 5'08" sur deux ans (amélioration de forme)
         base_pace = 334 - 26 * p
-
         week_days = [monday + timedelta(days=i) for i in range(7)]
-        race_day = next(
-            (d for d in week_days if d in self.races),
-            None,
-        )
+        race_day = next((d for d in week_days if d in self.races), None)
         taper = any(
             d - timedelta(days=7) in (self.half_marathon_day, self.prev_half_day) for d in week_days
         )
-        if monday in self.vacation_weeks:
+        vac = monday in self.vacation_weeks
+        if vac:
             base_km *= 0.6
         if race_day or taper:
             base_km *= 0.85
+        golf_week = plan["golf"] is not None
+        # (part du volume, décalage d'allure s/km, FC moy, sd FC)
+        # Allures de séance (échauffement compris) : fractionné ~4'15", tempo ~4'35",
+        # sortie longue ~5'30", footing ~5'40"
+        spec = {
+            "intervals": (0.19, -58, 161, 11),
+            "tempo": (0.20, -45, 164, 5),
+            "easy": (0.30 if vac else 0.20, +22, 136, 6),
+            "long": (0.35 if golf_week else 0.41, +10, 141, 6),
+        }
+        # Effet de la veille sur l'allure (s/km) : repos < autre sport < course < tennis
+        veille_effect = {"repos": -5, "autre": +2, "course": +12, "tennis": +12}
+        last_week = monday == END_DATE - timedelta(days=END_DATE.weekday())
 
-        plan = [
-            # (jour, type, part du volume, décalage d'allure s/km, FC moy, sd FC, heure)
-            # Allures séance (moyenne de la séance, échauffement compris) :
-            # fractionné ~4'15", tempo ~4'35", sortie longue ~5'30", footing ~5'40"
-            (1, "intervals", 0.17, -58, 161, 11, (19, 5)),
-            (2, "easy", 0.16, +22, 136, 6, (7, 0)),
-            (3, "easy", 0.17, +21, 135, 6, (12, 30)),
-            (5, "easy", 0.15, +22, 136, 6, (9, 0)),
-            # Week-end golf => sortie longue raccourcie (effet croisé injecté)
-            (6, "long", 0.29 if golf_week else 0.35, +10, 141, 6, (9, 0)),
-        ]
-        if rng.random() < 0.35:  # tempo au seuil le jeudi certaines semaines
-            plan[2] = (3, "tempo", 0.17, -45, 164, 5, (12, 30))
-        if monday in self.vacation_weeks:
-            plan = [plan[1], plan[3], plan[4]]
-
-        for dow, wtype, share, pace_off, hr, hr_sd, (hh, mm) in plan:
+        for dow in sorted(plan["runs"]):
+            wtype = plan["runs"][dow]
             day = week_days[dow]
             if day > END_DATE:
                 continue
+            busy = len(self.by_day.get(day, set())) > 0 or (plan["golf"] == dow)
             if race_day and wtype == "long":
-                day = race_day
                 rname, dist, secs, rhr = self.races[race_day]
-                pace = secs / dist
                 self.add_run(
-                    day,
-                    at(day, 9, 30),
-                    rname,
-                    "race",
-                    dist,
-                    pace,
-                    rhr,
-                    5,
-                    p,
-                    tennis_days,
+                    race_day, at(race_day, 9, 30), rname, "race", dist, secs / dist, rhr, 5, p, None
                 )
                 continue
-            if rng.random() < 0.03:  # séance sautée de temps en temps
+            if rng.random() < 0.03 and not last_week:  # séance sautée de temps en temps
                 continue
-            dist = max(5.0, base_km * share * self.gauss(1, 0.04))
-            pace = base_pace + pace_off + self.gauss(0, 5)
+            share, pace_off, hr, hr_sd = spec[wtype]
+            dist = max(5.0, base_km * share * self.gauss(1, 0.05))
+            v = self.veille(day)
+            pace = base_pace + pace_off + veille_effect[v] + self.gauss(0, 5)
+            if v == "tennis":
+                hr += 3
             names = {
                 "intervals": rng.choice(["Fractionné 10x400", "Fractionné 6x1000", "VMA 30/30"]),
                 "tempo": "Tempo au seuil",
                 "easy": rng.choice(["Footing", "Footing récup", "Sortie endurance"]),
                 "long": "Sortie longue",
             }
+            name = "Fractionné 6x1000" if last_week and wtype == "intervals" else names[wtype]
+            if plan["golf"] == dow:
+                hh, mm = 17, 30
+            elif busy or plan["tennis"].get(dow) or dow in plan["climb"] or dow in plan["swim"]:
+                hh, mm = (7, 0) if wtype != "intervals" else (18, 15)
+            else:
+                hh, mm = {
+                    "intervals": (19, 5),
+                    "tempo": (12, 30),
+                    "easy": rng.choice([(7, 0), (12, 30), (18, 40)]),
+                    "long": (9, 0),
+                }[wtype]
+            if last_week:
+                hh, mm = (19, 10) if wtype == "intervals" else (7, 11)
             self.add_run(
                 day,
-                at(day, hh, mm + rng.randint(0, 15)),
-                names[wtype],
+                at(day, hh, mm + (0 if last_week else rng.randint(0, 15))),
+                name,
                 wtype,
                 dist,
                 pace,
                 hr,
                 hr_sd,
                 p,
-                tennis_days,
+                v,
             )
 
-    def add_run(self, day, start, name, wtype, dist, pace, hr, hr_sd, p, tennis_days):
-        # Effet croisé : tennis la veille => allure plus lente + FC plus haute
-        if day - timedelta(days=1) in tennis_days and wtype != "race":
-            pace += self.gauss(8, 2)
-            hr += 3
+    def add_run(self, day, start, name, wtype, dist, pace, hr, hr_sd, p, veille):
         # Gain d'efficacité aérobie : même effort, FC plus basse au fil du temps
         if wtype != "race":
             hr = hr - 5 * p + self.gauss(0, 2)
         minutes = dist * pace / 60
-        self.activities.append(
+        self.record(
             Activity(
                 sport_type="Run",
                 start=start,
@@ -264,39 +344,26 @@ class Generator:
             )
         )
 
-    def tennis_week(self, monday: date) -> set[date]:
-        rng = self.rng
+    # ------------------------------------------------------------------ autres sports
+    def tennis_session(self, day: date, kind: str, n: int, monday: date) -> None:
         p = self.progress(monday)
-        days: set[date] = set()
-        if monday in self.vacation_weeks:
-            return days
-        n = rng.choices([3, 4, 5], weights=[0.25, 0.55, 0.2])[0]
-        candidate = [0, 2, 3, 4, 5, 6]  # lun, mer, jeu, ven, sam, dim
-        for dow in sorted(rng.sample(candidate, n)):
-            day = monday + timedelta(days=dow)
-            if day > END_DATE:
-                continue
-            minutes = self.gauss(420 / n * season_factor(monday), 15, 45, 160)
-            is_match = rng.random() < 0.4
-            extra: dict = {"session": "match" if is_match else "entrainement"}
-            if is_match:
-                win = rng.random() < (0.48 + 0.18 * p)
-                extra.update(self.tennis_score(win))
-            days.add(day)
-            self.activities.append(
-                Activity(
-                    sport_type="Tennis",
-                    start=at(day, 19 if dow < 5 else 16, 30),
-                    name="Match de tennis" if is_match else "Entraînement tennis",
-                    workout_type="match" if is_match else "training",
-                    moving_time_min=minutes,
-                    avg_hr=self.gauss(138 if is_match else 131, 5),
-                    hr_sd=13,
-                    max_hr=self.gauss(172, 5, 160, HR_MAX),
-                    extra=extra,
-                )
+        is_match = kind == "match"
+        extra: dict = {"session": "match" if is_match else "entrainement"}
+        if is_match:
+            extra.update(self.tennis_score(self.rng.random() < (0.48 + 0.18 * p)))
+        self.record(
+            Activity(
+                sport_type="Tennis",
+                start=at(day, 19 if day.weekday() < 5 else 16, 30),
+                name="Match de tennis" if is_match else "Entraînement tennis",
+                workout_type="match" if is_match else "training",
+                moving_time_min=self.gauss(420 / max(n, 3) * season_factor(monday), 15, 45, 160),
+                avg_hr=self.gauss(138 if is_match else 131, 5),
+                hr_sd=13,
+                max_hr=self.gauss(172, 5, 160, HR_MAX),
+                extra=extra,
             )
-        return days
+        )
 
     def tennis_score(self, win: bool) -> dict:
         rng = self.rng
@@ -313,68 +380,44 @@ class Generator:
         )
         return {"result": "W" if win else "L", "score": " ".join(sets)}
 
-    def swim_week(self, monday: date) -> None:
+    def swim_session(self, day: date, monday: date) -> None:
         rng = self.rng
         p = self.progress(monday)
-        sessions = 2 if monday in self.vacation_weeks else 1
-        dows = [rng.choice([2, 4])] if sessions == 1 else [1, 3]
-        for dow in dows:
-            if rng.random() < 0.08 and sessions == 1:
-                continue
-            day = monday + timedelta(days=dow)
-            if day > END_DATE:
-                continue
-            minutes = self.gauss(60, 6, 40, 80)
-            pace_100 = self.gauss(146 - 10 * p, 3)  # s/100 m, temps de nage effectif
-            swim_minutes = minutes * 0.86  # le reste = récup au mur
-            dist = swim_minutes * 60 / pace_100 / 10
-            self.activities.append(
-                Activity(
-                    sport_type="Swim",
-                    start=at(day, 12, 15),
-                    name=rng.choice(
-                        ["Natation endurance", "Natation technique", "Pyramide 100-400"]
-                    ),
-                    workout_type=rng.choice(["endurance", "technique", "endurance"]),
-                    moving_time_min=minutes,
-                    avg_hr=self.gauss(129, 4),
-                    hr_sd=8,
-                    max_hr=self.gauss(158, 4),
-                    distance_km=round(dist * 40) / 40,  # multiple de 25 m
-                    extra={
-                        "pool_length_m": 25,
-                        "swolf": round(self.gauss(40 - 4 * p, 0.8), 1),
-                        "pace_s_per_100m": round(pace_100, 1),
-                    },
-                )
+        minutes = self.gauss(60, 6, 40, 80)
+        pace_100 = self.gauss(146 - 10 * p, 3)  # s/100 m, temps de nage effectif
+        dist = minutes * 0.86 * 60 / pace_100 / 10  # le reste = récup au mur
+        self.record(
+            Activity(
+                sport_type="Swim",
+                start=at(day, 12, 15),
+                name=rng.choice(["Natation endurance", "Natation technique", "Pyramide 100-400"]),
+                workout_type=rng.choice(["endurance", "technique", "endurance"]),
+                moving_time_min=minutes,
+                avg_hr=self.gauss(129, 4),
+                hr_sd=8,
+                max_hr=self.gauss(158, 4),
+                distance_km=round(dist * 40) / 40,  # multiple de 25 m
+                extra={
+                    "pool_length_m": 25,
+                    "swolf": round(self.gauss(40 - 4 * p, 0.8), 1),
+                    "pace_s_per_100m": round(pace_100, 1),
+                },
             )
+        )
 
-    def golf_week(self, monday: date) -> bool:
-        rng = self.rng
+    def golf_session(self, day: date, monday: date) -> None:
         p = self.progress(monday)
-        # ~une semaine sur deux, avec un peu d'irrégularité
-        play = rng.random() < (0.18 if self.golf_last_played else 0.85)
-        winter = monday.month in (12, 1, 2)
-        if winter and rng.random() < 0.3:
-            play = False
-        self.golf_last_played = play
-        if not play:
-            return False
-        day = monday + timedelta(days=rng.choice([5, 6]))
-        if day > END_DATE:
-            return False
-        holes = 18 if rng.random() < 0.8 else 9
-        minutes = self.gauss(250 if holes == 18 else 125, 15)
+        holes = 18 if self.rng.random() < 0.8 else 9
         # Niveau débutant : ~133 coups -> ~121 sur deux ans (index ~45 -> ~40)
         score18 = self.gauss(133 - 12 * p, 5)
         score = round(score18 if holes == 18 else score18 / 2 + self.gauss(0, 1))
-        self.activities.append(
+        self.record(
             Activity(
                 sport_type="Golf",
                 start=at(day, 8, 20),
                 name=f"Parcours {holes} trous",
                 workout_type=f"{holes}_holes",
-                moving_time_min=minutes,
+                moving_time_min=self.gauss(250 if holes == 18 else 125, 15),
                 avg_hr=self.gauss(99, 4),
                 hr_sd=9,
                 max_hr=self.gauss(128, 5),
@@ -387,22 +430,15 @@ class Generator:
                 },
             )
         )
-        return True
 
-    def climb_week(self, monday: date) -> None:
-        rng = self.rng
+    def climb_session(self, day: date, monday: date) -> None:
         p = self.progress(monday)
-        if rng.random() < 0.08:
-            return
-        day = monday + timedelta(days=rng.choice([0, 3]))
-        if day > END_DATE:
-            return
         minutes = self.gauss(62, 7, 45, 85)
         level = 0.6 + 4.6 * p + self.gauss(0, 0.5)  # index dans FONT_GRADES
         max_idx = max(0, min(len(FONT_GRADES) - 1, round(level)))
         attempts = round(self.gauss(minutes / 2.6, 3, 10))
         sends = round(attempts * self.gauss(0.50 + 0.12 * p, 0.06, 0.25, 0.85))
-        self.activities.append(
+        self.record(
             Activity(
                 sport_type="RockClimbing",
                 start=at(day, 20, 30),
@@ -422,13 +458,26 @@ class Generator:
         )
 
     def build(self) -> list[Activity]:
+        self.by_day: dict[date, set[str]] = {}
         for w in range(N_WEEKS + 1):
             monday = self.start_monday + timedelta(weeks=w)
-            tennis_days = self.tennis_week(monday)
-            golf = self.golf_week(monday)
-            self.run_week(monday, tennis_days, golf)
-            self.swim_week(monday)
-            self.climb_week(monday)
+            plan = self.plan_week(monday)
+            n_tennis = len(plan["tennis"])
+            # Jour par jour, dans l'ordre : la course connaît l'activité de la veille
+            for dow in range(7):
+                day = monday + timedelta(days=dow)
+                if day > END_DATE:
+                    break
+                if plan["golf"] == dow:
+                    self.golf_session(day, monday)
+                if dow in plan["swim"]:
+                    self.swim_session(day, monday)
+                if dow in plan["runs"]:
+                    self.run_week(monday, {**plan, "runs": {dow: plan["runs"][dow]}})
+                if dow in plan["tennis"]:
+                    self.tennis_session(day, plan["tennis"][dow], n_tennis, monday)
+                if dow in plan["climb"]:
+                    self.climb_session(day, monday)
         self.activities.sort(key=lambda a: a.start)
         return self.activities
 
@@ -539,7 +588,7 @@ def check(records: list[dict]) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--seed", type=int, default=57)
     parser.add_argument("--output", type=Path, default=OUTPUT)
     args = parser.parse_args()
 

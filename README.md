@@ -92,7 +92,7 @@ frontend/data/mock/fct_activities.json (jeu de démo, seed fixe)  ────�
 **KPI notables** : charge d'entraînement TRIMP commune à tous les sports, modèle forme/fatigue/fraîcheur (Banister), ratio charge aiguë/chronique (risque de blessure), polarisation 80/20 par zones cardiaques, corrélations entre sports, effets mesurés (tennis la veille → allure du lendemain, semaine golf → sortie longue), prédictions de temps de course, index golf estimé (méthode WHS).
 
 ```bash
-python scripts/generate_mock_activities.py        # régénère le jeu de démo (seed 42)
+python scripts/generate_mock_activities.py        # régénère le jeu de démo (seed 57)
 pytest tests/frontend/test_dashboard_data.py      # vérifie le contrat et la calibration
 ```
 
