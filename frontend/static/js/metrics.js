@@ -71,16 +71,16 @@
      * Modèle impulsion-réponse (Performance Management Chart) :
      *   CTL (forme de fond) = moyenne exponentielle 42 j de la charge
      *   ATL (fatigue)       = moyenne exponentielle 7 j
-     *   TSB (fraîcheur)     = CTL(veille) − ATL(veille)
+     *   TSB (fraîcheur)     = CTL − ATL (même jour, pour que les trois valeurs affichées soient cohérentes)
      * ACWR (Gabbett) = charge moyenne 7 j / charge moyenne 28 j.
      */
     function pmc(daily) {
         let ctl = 0, atl = 0;
         const kC = 1 - Math.exp(-1 / 42), kA = 1 - Math.exp(-1 / 7);
         return daily.map((d, i) => {
-            const tsb = ctl - atl;
             ctl += (d.value - ctl) * kC;
             atl += (d.value - atl) * kA;
+            const tsb = ctl - atl;
             const s7 = daily.slice(Math.max(0, i - 6), i + 1).reduce((s, x) => s + x.value, 0) / 7;
             const s28 = daily.slice(Math.max(0, i - 27), i + 1).reduce((s, x) => s + x.value, 0) / 28;
             return { date: d.date, load: d.value, ctl, atl, tsb, acwr: s28 > 0 ? s7 / s28 : null };

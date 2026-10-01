@@ -6,6 +6,7 @@
     <title>Altarun - Coach IA</title>
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='images/Logo.svg') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/coach.css') }}">
 </head>
 <body>
     <div class="app-container">
@@ -81,7 +82,7 @@
 
         <!-- Main Content -->
         <main class="main-content">
-            <div class="content-wrapper">
+            <div class="content-wrapper wide">
                 <h1 class="page-title">Mon coach IA</h1>
 
                 {% if not is_strava_connected %}
@@ -94,10 +95,15 @@
                     </div>
                 </div>
                 {% endif %}
+
+                <!-- Chat avec le coach : contexte calculé depuis fct_activities -->
+                <div id="coach" class="coach-root" data-source="{{ url_for('dashboard_data') }}"></div>
             </div>
         </main>
     </div>
 
+    <script src="{{ url_for('static', filename='js/metrics.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/coach.js') }}"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const toggleBtn = document.getElementById('sidebarToggle');

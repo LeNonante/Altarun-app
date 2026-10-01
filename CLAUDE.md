@@ -42,7 +42,7 @@ Altarun-app/
 │   ├── data/mock/                # Jeu de démo fct_activities.json (généré par scripts/)
 │   ├── templates/                # Templates Jinja2 (login, clubs, settings, admin, ...)
 │   ├── static/css|images/
-│   ├── static/js/                # metrics.js (KPI), charts.js (SVG), dashboard.js (page d'accueil), studio.js (Studio KPI)
+│   ├── static/js/                # metrics.js (KPI), charts.js (SVG), dashboard.js (page d'accueil), studio.js (Studio KPI), coach.js (chat Coach IA)
 │   ├── requirements.txt
 │   └── Dockerfile                # Expose le port 5001, gunicorn
 │

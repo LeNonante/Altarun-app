@@ -177,8 +177,8 @@ class Generator:
         plan = [
             # (jour, type, part du volume, décalage d'allure s/km, FC moy, sd FC, heure)
             # Allures séance (moyenne de la séance, échauffement compris) :
-            # fractionné ~4'10", tempo ~4'25", sortie longue ~5'30", footing ~5'40"
-            (1, "intervals", 0.17, -70, 161, 11, (19, 5)),
+            # fractionné ~4'15", tempo ~4'35", sortie longue ~5'30", footing ~5'40"
+            (1, "intervals", 0.17, -58, 161, 11, (19, 5)),
             (2, "easy", 0.16, +22, 136, 6, (7, 0)),
             (3, "easy", 0.17, +21, 135, 6, (12, 30)),
             (5, "easy", 0.15, +22, 136, 6, (9, 0)),
@@ -186,7 +186,7 @@ class Generator:
             (6, "long", 0.29 if golf_week else 0.35, +10, 141, 6, (9, 0)),
         ]
         if rng.random() < 0.35:  # tempo au seuil le jeudi certaines semaines
-            plan[2] = (3, "tempo", 0.17, -55, 164, 5, (12, 30))
+            plan[2] = (3, "tempo", 0.17, -45, 164, 5, (12, 30))
         if monday in self.vacation_weeks:
             plan = [plan[1], plan[3], plan[4]]
 

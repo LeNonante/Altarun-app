@@ -85,6 +85,8 @@ frontend/data/mock/fct_activities.json (jeu de démo, seed fixe)  ────�
 | Page | `frontend/static/js/dashboard.js`, `templates/index.html` | Filtres, tuiles KPI, analyses croisées, export CSV |
 | Studio KPI | `frontend/static/js/studio.js` | Constructeur de KPI en glisser-déposer (mesures × dimensions, dont dimensions croisées : activité/charge de la veille, forme du jour, semaine avec golf), 6 visuels, requête BigQuery générée, épinglage sur la vue d'ensemble. Le visuel « Comparaison » produit les cartes « Analyses croisées » (groupe A vs B ou valeur vs cible) : les 4 cartes par défaut sont des configurations du Studio, modifiables et remplaçables |
 
+**Coach IA** (`templates/coach.html`, `static/js/coach.js`) : chat avec le coach, alimenté par un contexte calculé depuis `fct_activities` (forme du jour, charge, records, prédictions, effets croisés), affiché à droite de la conversation. Les réponses sont aujourd'hui générées localement à partir de ce contexte ; le branchement d'un modèle de langage passera par une route `POST /coach/message` qui recevra ce même contexte.
+
 **KPI notables** : charge d'entraînement TRIMP commune à tous les sports, modèle forme/fatigue/fraîcheur (Banister), ratio charge aiguë/chronique (risque de blessure), polarisation 80/20 par zones cardiaques, corrélations entre sports, effets mesurés (tennis la veille → allure du lendemain, semaine golf → sortie longue), prédictions de temps de course, index golf estimé (méthode WHS).
 
 ```bash
