@@ -14,9 +14,9 @@
     // Référentiel des sports (ordre fixe => couleur fixe, jamais réattribuée).
     // Palette validée (contraste >= 3:1, séparation daltonisme ΔE >= 8 entre voisins).
     const SPORTS = [
-        { key: "Run", label: "Course", color: "#d95926", unit: "km", target: 40, targetLabel: "Objectif 40 km" },
+        { key: "Run", label: "Course", color: "#d95926", unit: "km", target: 65, targetLabel: "Objectif 65 km" },
         { key: "Swim", label: "Natation", color: "#3987e5", unit: "h", target: 1, targetLabel: "Objectif 1 h" },
-        { key: "Tennis", label: "Tennis", color: "#c98500", unit: "h", target: 3, targetLabel: "Objectif 3 h" },
+        { key: "Tennis", label: "Tennis", color: "#c98500", unit: "h", target: 7, targetLabel: "Objectif 7 h" },
         { key: "RockClimbing", label: "Escalade", color: "#9085e9", unit: "h", target: 1, targetLabel: "Objectif 1 h" },
         { key: "Golf", label: "Golf", color: "#199e70", unit: "h", target: 2, targetLabel: "Moyenne visée 2 h" },
     ];

@@ -32,7 +32,15 @@
     const DOW = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
     const RUN_TYPES = { easy: "Footing", long: "Sortie longue", intervals: "Fractionné", tempo: "Tempo", race: "Compétition" };
 
-    const state = { sport: "all", weeks: 12 };
+    const state = { sport: "all", weeks: 12, view: "overview", pins: loadPins() };
+
+    // KPI épinglés depuis le Studio (préférence locale du navigateur ; à terme : table API)
+    function loadPins() {
+        try { return JSON.parse(localStorage.getItem("altarun-pins") || "[]"); } catch (e) { return []; }
+    }
+    function savePins() {
+        try { localStorage.setItem("altarun-pins", JSON.stringify(state.pins)); } catch (e) { /* stockage indisponible */ }
+    }
     let DATA = null;
 
     // ------------------------------------------------------------- DOM utils
@@ -139,11 +147,52 @@
     }
 
     function insight(i) {
+        const body = [];
+        if (i.rows) {
+            body.push(h("div", { class: "dash-cmp" }, i.rows.map((r) => h("div", { class: "dash-cmp-row" },
+                h("span", { class: "dash-cmp-label" }, r.label),
+                r.bar != null
+                    ? h("span", { class: "dash-cmp-track" }, h("span", { class: "dash-cmp-bar", style: `width:${(r.bar * 100).toFixed(1)}%;background:${r.color}` }))
+                    : h("span", { class: "dash-cmp-meta" }, r.meta || ""),
+                h("strong", { class: "dash-cmp-value" }, r.value)))));
+        }
+        if (i.stack) {
+            body.push(h("div", { class: "dash-stack" }, i.stack.map((p) => h("span", { class: "dash-stack-seg", style: `flex:${p.v.toFixed(2)};background:${p.color}`, title: `${p.label} : ${F.fr(p.v)} %` }))),
+                h("div", { class: "dash-stack-legend" }, i.stack.map((p) => h("span", {}, h("span", { class: "dash-legend-key", style: `--c:${p.color}` }), `${p.label} ${F.fr(p.v)} %`))));
+        }
         return h("article", { class: "dash-insight" },
             h("div", { class: "dash-insight-tag" }, i.tag),
             h("div", { class: "dash-insight-value" }, i.value),
-            h("p", { class: "dash-insight-text" }, i.text),
-            h("p", { class: "dash-insight-method" }, i.method));
+            h("div", { class: "dash-insight-label" }, i.label),
+            ...body,
+            h("div", { class: "dash-insight-method" }, i.foot));
+    }
+
+    // ------------------------------------------------------------- dimensions dérivées
+    /**
+     * Colonnes calculées utilisées par le Studio (équivalent d'un modèle dbt intermédiaire) :
+     * activité / charge de la veille, forme du jour (TSB), semaine avec golf, moment de la journée.
+     */
+    function enrich(data) {
+        const byDay = new Map();
+        data.acts.forEach((a) => {
+            const d = byDay.get(a.day) || { load: 0, tennis: false, run: false };
+            d.load += a.load; d.tennis = d.tennis || a.sport_type === "Tennis"; d.run = d.run || a.sport_type === "Run";
+            byDay.set(a.day, d);
+        });
+        const tsb = new Map(M.pmc(M.dailyLoad(data.acts, data.first, data.last)).map((p) => [M.dayKey(p.date), p.tsb]));
+        const golfWeeks = new Set(data.acts.filter((a) => a.sport_type === "Golf").map((a) => M.dayKey(M.mondayOf(a.date))));
+        data.acts.forEach((a) => {
+            const pv = byDay.get(M.dayKey(M.addDays(a.date, -1)));
+            a.d_veille = !pv ? "Repos" : pv.tennis ? "Tennis" : pv.run ? "Course" : "Autre sport";
+            a.d_chargeVeille = !pv ? "Repos" : pv.load < 80 ? "Légère (< 80)" : pv.load <= 150 ? "Modérée (80–150)" : "Forte (> 150)";
+            const t = tsb.get(a.day) ?? 0;
+            a.d_forme = t > 5 ? "Frais" : t >= -10 ? "Équilibré" : t >= -30 ? "Productif" : "Surcharge";
+            a.d_golfWeek = golfWeeks.has(M.dayKey(M.mondayOf(a.date))) ? "Oui" : "Non";
+            const hr = a.date.getHours();
+            a.d_moment = hr < 11 ? "Matin" : hr < 15 ? "Midi" : hr < 18 ? "Après-midi" : "Soir";
+        });
+        return data;
     }
 
     // ------------------------------------------------------------- contexte
@@ -389,85 +438,97 @@
     // Analyses croisées (le cœur « data » du dashboard)
     // =====================================================================
     function renderInsights(grid, ctx, isAll) {
-        const { all, from, end } = ctx;
-        // On utilise au moins 26 semaines d'historique pour la robustesse statistique.
-        const winFrom = M.addDays(end, -Math.max(ctx.weeks, 26) * 7 + 1);
+        const { all, end } = ctx;
+        // Au moins 26 semaines d'historique pour que les écarts soient robustes.
+        const nW = Math.max(ctx.weeks, 26);
+        const winFrom = M.addDays(end, -nW * 7 + 1);
         const pool = M.inRange(all, winFrom, end);
         const runs = pool.filter((a) => a.sport_type === "Run" && a.workout_type !== "race");
         const tennisDays = new Set(pool.filter((a) => a.sport_type === "Tennis").map((a) => a.day));
+        const paceOf = (rs) => (M.sum(rs, (r) => r.moving_time_min) * 60) / (M.sum(rs, (r) => r.distance_km) || 1);
         const items = [];
 
-        // 1. Tennis la veille -> allure du lendemain (à type de séance égal)
+        // 1. Tennis la veille -> allure des footings (même type de séance)
         {
-            let dPace = 0, dHr = 0, w = 0, nAfter = 0;
-            ["easy", "long", "intervals", "tempo"].forEach((t) => {
-                const rs = runs.filter((r) => r.workout_type === t);
-                const after = rs.filter((r) => tennisDays.has(M.dayKey(M.addDays(r.date, -1))));
-                const fresh = rs.filter((r) => !tennisDays.has(M.dayKey(M.addDays(r.date, -1))));
-                if (after.length < 2 || fresh.length < 2) return;
-                const k = Math.min(after.length, fresh.length);
-                dPace += k * (M.mean(after, (r) => r.avg_pace_s_per_km) - M.mean(fresh, (r) => r.avg_pace_s_per_km));
-                dHr += k * (M.mean(after, (r) => r.avg_hr) - M.mean(fresh, (r) => r.avg_hr));
-                w += k; nAfter += after.length;
-            });
-            if (w) items.push({
-                tag: "Tennis → Course",
-                value: `${F.signed(dPace / w, 1)} s/km`,
-                text: `Le lendemain d'un tennis, tes sorties sont plus lentes à type de séance égal, avec une FC ${F.signed(dHr / w, 1)} bpm. Planifie le fractionné loin des jours de tennis.`,
-                method: `Écart pondéré par type de séance · ${nAfter} sorties post-tennis vs ${runs.length - nAfter} · ${Math.max(ctx.weeks, 26)} sem.`,
-            });
+            const easy = runs.filter((r) => r.workout_type === "easy");
+            const after = easy.filter((r) => tennisDays.has(M.dayKey(M.addDays(r.date, -1))));
+            const fresh = easy.filter((r) => !tennisDays.has(M.dayKey(M.addDays(r.date, -1))));
+            if (after.length > 2 && fresh.length > 2) {
+                const pA = paceOf(after), pF = paceOf(fresh);
+                items.push({
+                    tag: "Tennis → Course",
+                    value: `${F.signed(pA - pF, 1)} s/km`,
+                    label: "Allure des footings le lendemain d'un tennis",
+                    rows: [
+                        { label: "Après tennis", value: `${F.pace(pA)}/km`, meta: `${F.fr(M.mean(after, (r) => r.avg_hr))} bpm` },
+                        { label: "Sans tennis", value: `${F.pace(pF)}/km`, meta: `${F.fr(M.mean(fresh, (r) => r.avg_hr))} bpm` },
+                    ],
+                    foot: `n = ${after.length} vs ${fresh.length} footings · ${nW} sem.`,
+                });
+            }
         }
 
-        // 2. Week-end golf -> sortie longue
+        // 2. Semaine de golf -> sortie longue
         {
             const golfWeeks = new Set(pool.filter((a) => a.sport_type === "Golf").map((a) => M.dayKey(M.mondayOf(a.date))));
             const longs = runs.filter((r) => r.workout_type === "long");
             const g = longs.filter((r) => golfWeeks.has(M.dayKey(M.mondayOf(r.date))));
             const ng = longs.filter((r) => !golfWeeks.has(M.dayKey(M.mondayOf(r.date))));
             if (g.length > 2 && ng.length > 2) {
-                const d = M.mean(g, (r) => r.distance_km) - M.mean(ng, (r) => r.distance_km);
+                const dG = M.mean(g, (r) => r.distance_km), dN = M.mean(ng, (r) => r.distance_km);
                 items.push({
                     tag: "Golf → Sortie longue",
-                    value: `${F.signed(d, 1)} km`,
-                    text: `Les semaines où tu joues au golf, la sortie longue du dimanche est raccourcie. Sur l'année, c'est ~${F.fr(Math.abs(d) * g.length * (52 / Math.max(ctx.weeks, 26)), 0)} km d'endurance fondamentale en moins.`,
-                    method: `${g.length} sorties longues en semaine golf vs ${ng.length} sans golf.`,
+                    value: `${F.signed(dG - dN, 1)} km`,
+                    label: "Distance de la sortie longue en semaine de golf",
+                    rows: [
+                        { label: "Semaine golf", value: `${F.fr(dG, 1)} km`, bar: dG / Math.max(dG, dN), color: M.SPORT.Golf.color },
+                        { label: "Sans golf", value: `${F.fr(dN, 1)} km`, bar: dN / Math.max(dG, dN), color: "#5a5a66" },
+                    ],
+                    foot: `n = ${g.length} vs ${ng.length} sorties longues · ${nW} sem.`,
                 });
             }
         }
 
-        // 3. Efficacité aérobie
+        // 3. Efficacité aérobie (tendance)
         {
             const easy = runs.filter((r) => r.workout_type === "easy" || r.workout_type === "long");
             if (easy.length > 6) {
-                const x = easy.map((r) => (r.date - from) / M.DAY), y = easy.map(M.efficiency);
+                const x = easy.map((r) => (r.date - winFrom) / M.DAY), y = easy.map(M.efficiency);
                 const lr = M.linreg(x, y);
-                const span = (end - winFrom) / M.DAY;
-                const startV = lr.intercept + lr.slope * ((winFrom - from) / M.DAY);
-                const gain = (lr.slope * span) / startV * 100;
+                const v0 = lr.intercept, v1 = lr.intercept + lr.slope * ((end - winFrom) / M.DAY);
                 items.push({
                     tag: "Efficacité aérobie",
-                    value: `${F.signed(gain, 1)} %`,
-                    text: "Vitesse produite par battement cardiaque sur tes footings et sorties longues : à effort égal, tu cours plus vite. C'est le meilleur signal de progression du moteur aérobie.",
-                    method: `Régression linéaire de l'EF (m/min ÷ bpm) · ${easy.length} sorties.`,
+                    value: `${F.signed(((v1 - v0) / v0) * 100, 1)} %`,
+                    label: "Vitesse par battement cardiaque, footings et sorties longues",
+                    rows: [
+                        { label: "Début de période", value: `${F.fr(v0, 3)}`, meta: "m/min/bpm" },
+                        { label: "Aujourd'hui", value: `${F.fr(v1, 3)}`, meta: "m/min/bpm" },
+                    ],
+                    foot: `Tendance linéaire · n = ${easy.length} sorties · ${nW} sem.`,
                 });
             }
         }
 
-        // 4. Polarisation 80/20 (course)
+        // 4. Polarisation (course)
         {
             const z = [0, 1, 2, 3, 4].map((i) => M.sum(runs, (r) => r.hr_zones_min[i]));
             const tot = M.sum(z) || 1;
-            const low = ((z[0] + z[1]) / tot) * 100, mid = (z[2] / tot) * 100, hi = ((z[3] + z[4]) / tot) * 100;
+            const parts = [
+                { label: "Z1–Z2", v: ((z[0] + z[1]) / tot) * 100, color: ZONES[1].color },
+                { label: "Z3", v: (z[2] / tot) * 100, color: ZONES[2].color },
+                { label: "Z4–Z5", v: ((z[3] + z[4]) / tot) * 100, color: ZONES[3].color },
+            ];
             items.push({
-                tag: "Polarisation",
-                value: `${F.fr(low)} / ${F.fr(mid)} / ${F.fr(hi)}`,
-                text: `Temps de course en basse / moyenne / haute intensité. La cible « 80/20 » vise ~80 % en Z1–Z2 : ${low < 75 ? "trop de temps en zone grise (Z3), ralentis tes footings." : "répartition saine."}`,
-                method: "Zones à 60/70/80/90 % de FC max · temps cumulé par zone.",
+                tag: "Polarisation course",
+                value: `${F.fr(parts[0].v)} %`,
+                label: "Temps de course en basse intensité (cible 80 %)",
+                stack: parts,
+                foot: `Zones à 60/70/80/90 % de FC max · ${nW} sem.`,
             });
         }
 
         if (!items.length) return;
-        const c = card("Analyses croisées", isAll ? "Effets mesurés entre sports — calculés sur tes données, pas des moyennes génériques" : "Ce qui influence ta course", { span: 12 });
+        const c = card("Analyses croisées", isAll ? "Effets mesurés entre sports" : "Facteurs qui influencent la course", { span: 12 });
         c.body.append(h("div", { class: "dash-insights" }, items.map(insight)));
         grid.append(c.root);
     }
@@ -532,7 +593,7 @@
         const wk = bucketSeries(cur, ctx.wbks, "week", (a) => a.distance_km);
 
         root.append(h("div", { class: "dash-tiles" },
-            tile({ label: "Distance hebdo", value: F.fr(km / weeks, 1), unit: "km / sem.", delta: prev && { value: km / weeks - prevKm / weeks, digits: 1, unit: " km", goodWhenUp: true }, sub: `${F.fr(km)} km sur la période · objectif 40`, spark: { values: wk, color: M.SPORT.Run.color } }),
+            tile({ label: "Distance hebdo", value: F.fr(km / weeks, 1), unit: "km / sem.", delta: prev && { value: km / weeks - prevKm / weeks, digits: 1, unit: " km", goodWhenUp: true }, sub: `${F.fr(km)} km sur la période · objectif ${M.SPORT.Run.target}`, spark: { values: wk, color: M.SPORT.Run.color } }),
             tile({ label: "Allure moyenne", value: F.pace(paceS), unit: "/ km", delta: prev && { value: paceS - prevPace, digits: 1, unit: " s/km", goodWhenUp: false }, sub: `${F.fr(min / 60 / weeks, 1)} h de course / semaine` }),
             tile({ label: "Sorties", value: F.fr(cur.length), unit: "", delta: prev && { value: cur.length - prev.length, goodWhenUp: true }, sub: `${F.fr(cur.length / weeks, 1)} / semaine · ${cur.filter((a) => ["intervals", "tempo"].includes(a.workout_type)).length} séances qualité` }),
             tile({ label: "Dénivelé positif", value: F.fr(M.sum(cur, (a) => a.elevation_gain_m)), unit: "m D+", delta: prev && { value: pct(M.sum(cur, (a) => a.elevation_gain_m), M.sum(prev, (a) => a.elevation_gain_m)), unit: " %", goodWhenUp: null }, sub: `${F.fr(M.sum(cur, (a) => a.elevation_gain_m) / (km || 1), 1)} m / km` }),
@@ -559,7 +620,7 @@
                     return h("div", { class: "dash-pred-row" }, h("span", { class: "dash-pred-label" }, lab), h("strong", {}, F.hms(sec)), h("span", { class: "dash-pred-pace" }, F.pace(sec / dist) + "/km"));
                 });
                 c.body.append(h("div", { class: "dash-pred" }, rows),
-                    h("p", { class: "dash-footnote" }, `Référence : ${ref.a.name} du ${ref.a.date.toLocaleDateString("fr-FR")} — ${F.fr(d, 1)} km en ${F.hms(t)}. Marathon : estimation optimiste sans volume spécifique (> 60 km/sem.).`));
+                    h("p", { class: "dash-footnote" }, `Référence : ${ref.a.name} du ${ref.a.date.toLocaleDateString("fr-FR")} — ${F.fr(d, 1)} km en ${F.hms(t)}. Marathon : extrapolation, à confirmer par des sorties longues de 30 km et plus.`));
                 c.setTable({ head: ["Distance", "Temps prédit", "Allure"], rows: [["5 km", 5], ["10 km", 10], ["Semi", 21.0975], ["Marathon", 42.195]].map(([l, dist]) => { const s = M.riegel(t, d, dist); return [l, F.hms(s), F.pace(s / dist)]; }) });
             }
         }
@@ -630,7 +691,7 @@
         const hrMatch = M.mean(matches, (a) => a.avg_hr), hrTrain = M.mean(cur.filter((a) => a.workout_type === "training"), (a) => a.avg_hr);
 
         root.append(h("div", { class: "dash-tiles" },
-            tile({ label: "Temps de jeu", value: F.fr(hours / weeks, 1), unit: "h / sem.", delta: prev && { value: hours / weeks - M.sum(prev, (a) => a.hours) / weeks, digits: 1, unit: " h", goodWhenUp: true }, sub: `${F.fr(hours, 0)} h sur la période · objectif 3 h`, spark: { values: bucketSeries(cur, ctx.wbks, "week", (a) => a.hours), color: M.SPORT.Tennis.color } }),
+            tile({ label: "Temps de jeu", value: F.fr(hours / weeks, 1), unit: "h / sem.", delta: prev && { value: hours / weeks - M.sum(prev, (a) => a.hours) / weeks, digits: 1, unit: " h", goodWhenUp: true }, sub: `${F.fr(hours, 0)} h sur la période · objectif ${M.SPORT.Tennis.target} h`, spark: { values: bucketSeries(cur, ctx.wbks, "week", (a) => a.hours), color: M.SPORT.Tennis.color } }),
             tile({ label: "Séances", value: F.fr(cur.length), unit: "", delta: prev && { value: cur.length - prev.length, goodWhenUp: true }, sub: `${F.duration(M.mean(cur, (a) => a.moving_time_min))} en moyenne` }),
             tile({ label: "Bilan en match", value: `${wins} – ${matches.length - wins}`, unit: "", sub: `${matches.length} matchs joués`, delta: prevM && { value: matches.length - prevM.length, goodWhenUp: true } }),
             tile({ label: "Taux de victoire", value: F.fr(rate * 100), unit: "%", delta: prevRate != null && rate != null && { value: (rate - prevRate) * 100, unit: " pts", goodWhenUp: true }, sub: "sur les matchs de la période" }),
@@ -878,21 +939,57 @@
         // Filtres reflétés dans l'URL => vue partageable. Ignoré si l'environnement l'interdit.
         try {
             const p = new URLSearchParams(location.search);
-            p.set("sport", state.sport); p.set("periode", String(state.weeks));
+            p.set("sport", state.sport); p.set("periode", String(state.weeks)); p.set("vue", state.view);
             history.replaceState(null, "", `${location.pathname}?${p.toString()}`);
         } catch (e) { /* iframe sandboxée, file:// … */ }
+    }
+
+    function renderViews(host) {
+        const views = [{ key: "overview", label: "Vue d'ensemble" }, { key: "studio", label: "Studio KPI" }];
+        host.replaceChildren(...views.map((v) => h("button", {
+            type: "button", role: "tab", class: "dash-view-tab", "aria-selected": String(state.view === v.key),
+            onclick: () => { state.view = v.key; update(); },
+        }, v.label, v.key === "studio" && state.pins.length ? h("span", { class: "dash-view-count" }, String(state.pins.length)) : null)));
+    }
+
+    /** Cartes des KPI épinglés, recalculées avec les filtres courants. */
+    function renderPins(body, ctx) {
+        if (!state.pins.length || !window.AltarunStudio) return;
+        const grid = h("div", { class: "dash-grid dash-pins" });
+        state.pins.forEach((pin, i) => {
+            const odd = state.pins.length % 2 === 1 && i === state.pins.length - 1;
+            const c = card(pin.title, "KPI personnalisé · Studio", { span: odd ? 12 : 6 });
+            const remove = h("button", { type: "button", class: "dash-link-btn", onclick: () => { state.pins.splice(i, 1); savePins(); update(); } }, "Retirer");
+            c.root.querySelector(".dash-card-head").append(remove);
+            grid.append(c.root);
+            requestAnimationFrame(() => {
+                const out = window.AltarunStudio.renderVisual(c.body, pin, ctx.cur, ctx, h);
+                if (out.table) c.setTable(out.table);
+            });
+        });
+        const tiles = body.querySelector(".dash-tiles");
+        if (tiles) tiles.after(grid); else body.prepend(grid);
     }
 
     function update() {
         syncUrl();
         V.hideTip();
         const ctx = context();
+        renderViews(document.getElementById("dash-views"));
         renderToolbar(document.getElementById("dash-toolbar"));
         renderMeta(document.getElementById("dash-meta"), ctx);
         const body = document.getElementById("dash-body");
         body.replaceChildren();
+        if (state.view === "studio" && window.AltarunStudio) {
+            window.AltarunStudio.mount(body, {
+                h, acts: ctx.cur, ctx, sport: state.sport, pinsCount: state.pins.length,
+                onPin: (pin) => { state.pins.push(pin); savePins(); state.view = "overview"; update(); window.scrollTo({ top: 0, behavior: "smooth" }); },
+            });
+            return;
+        }
         const renderers = { all: renderAll, Run: renderRun, Tennis: renderTennis, Golf: renderGolf, Swim: renderSwim, RockClimbing: renderClimb };
         renderers[state.sport](body, ctx);
+        renderPins(body, ctx);
     }
 
     async function init() {
@@ -901,9 +998,10 @@
         const p = new URLSearchParams(location.search);
         if (p.get("sport") && (p.get("sport") === "all" || M.SPORT[p.get("sport")])) state.sport = p.get("sport");
         if (PERIODS.some((x) => String(x.weeks) === p.get("periode"))) state.weeks = Number(p.get("periode"));
+        if (p.get("vue") === "studio") state.view = "studio";
         try {
             const payload = window.ALTARUN_DATA || (await (await fetch(root.dataset.source, { credentials: "same-origin" })).json());
-            DATA = M.prepare(payload);
+            DATA = enrich(M.prepare(payload));
             root.classList.remove("is-loading");
             update();
         } catch (e) {

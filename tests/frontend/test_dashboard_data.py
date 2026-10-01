@@ -48,12 +48,13 @@ def test_mock_payload_is_calibrated(payload: dict) -> None:
         if a["sport_type"] == "Run":
             km += a["distance_km"]
             run_min += a["moving_time_min"]
-    assert km / 52 == pytest.approx(40, abs=0.3)
+    assert km / 52 == pytest.approx(65, abs=0.3)
     assert run_min * 60 / km == pytest.approx(320, abs=1.5)  # 5'20"/km
-    assert hours["Tennis"] / 52 == pytest.approx(3, abs=0.05)
+    assert hours["Tennis"] / 52 == pytest.approx(7, abs=0.05)
     assert hours["Swim"] / 52 == pytest.approx(1, abs=0.05)
     assert hours["Golf"] / 52 == pytest.approx(2, abs=0.05)
     assert hours["RockClimbing"] / 52 == pytest.approx(1, abs=0.05)
+    assert 16 <= sum(hours.values()) / 52 <= 18  # volume total visé ~17 h / semaine
 
 
 def test_validate_rejects_broken_contract() -> None:

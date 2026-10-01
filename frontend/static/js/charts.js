@@ -190,7 +190,8 @@
                 if (i % every !== 0 && i !== n - 1) return;
                 if (i === n - 1 && i % every !== 0 && (n - 1) % every < every * 0.6) return;
                 const tx = el("text", { x: x(i), y: height - 8, "text-anchor": "middle", class: "viz-tick" }, g);
-                tx.textContent = lab;
+                const maxChars = Math.max(4, Math.floor((band * every) / 6.4));
+                tx.textContent = lab.length > maxChars ? lab.slice(0, maxChars - 1) + "…" : lab;
             });
             if (bars.length) el("line", { x1: m.l, x2: width - m.r, y1: y(0), y2: y(0), stroke: C.axis }, g);
 
@@ -217,6 +218,7 @@
                     const bx = x(i) - (sub * nb) / 2 + k * sub + (nb > 1 ? 1 : 0);
                     const bwk = Math.max(1, sub - (nb > 1 ? 2 : 0));
                     if (v > 0) el("path", { d: barPath(bx, y(v), bwk, y(0) - y(v), sub > 6 ? 4 : 0, true), fill: b.color, class: "viz-bar" }, svg);
+                    if (opts.valueLabels && n * nb <= 16) el("text", { x: bx + bwk / 2, y: (v > 0 ? y(v) : y(0)) - 6, "text-anchor": "middle", class: "viz-value" }, svg).textContent = opts.valueLabels(v);
                     else el("path", { d: barPath(bx, y(0), bwk, y(v) - y(0), 0, false), fill: b.color, class: "viz-bar" }, svg);
                 }));
             }
@@ -239,7 +241,17 @@
                     d += (pen ? "L" : "M") + x(i).toFixed(1) + "," + y(v).toFixed(1);
                     pen = true;
                 });
-                el("path", { d, fill: "none", stroke: l.color, "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round", "stroke-dasharray": l.dashed ? "5 4" : "none" }, svg);
+                if (!l.noPath) el("path", { d, fill: "none", stroke: l.color, "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round", "stroke-dasharray": l.dashed ? "5 4" : "none" }, svg);
+                if (l.dots) {
+                    l.values.forEach((v, i) => {
+                        if (v == null || !isFinite(v)) return;
+                        const off = l.dotOffset || 0;
+                        el("circle", { cx: x(i) + off, cy: y(v), r: 5, fill: l.color, stroke: C.surface, "stroke-width": 2 }, svg);
+                        if (opts.valueLabels && n * lines.length <= 16) {
+                            el("text", { x: x(i) + off, y: y(v) - 11, "text-anchor": "middle", class: "viz-value" }, svg).textContent = opts.valueLabels(v);
+                        }
+                    });
+                }
                 if (l.area) {
                     const first = l.values.findIndex((v) => v != null);
                     el("path", { d: d + `L${x(n - 1)},${y(yMin)}L${x(first)},${y(yMin)}Z`, fill: l.color, opacity: 0.1 }, svg);

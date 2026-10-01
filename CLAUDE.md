@@ -42,7 +42,7 @@ Altarun-app/
 │   ├── data/mock/                # Jeu de démo fct_activities.json (généré par scripts/)
 │   ├── templates/                # Templates Jinja2 (login, clubs, settings, admin, ...)
 │   ├── static/css|images/
-│   ├── static/js/                # metrics.js (KPI), charts.js (SVG), dashboard.js (page d'accueil)
+│   ├── static/js/                # metrics.js (KPI), charts.js (SVG), dashboard.js (page d'accueil), studio.js (Studio KPI)
 │   ├── requirements.txt
 │   └── Dockerfile                # Expose le port 5001, gunicorn
 │
@@ -132,6 +132,7 @@ git branch -a                 # main, dev_louis, dev_aurel, ajout-cartes, dev-no
 - Toute définition de KPI vit dans `frontend/static/js/metrics.js` (une formule = un endroit). Ne pas recalculer un KPI dans `dashboard.js`.
 - Les couleurs de sport sont fixes (ordre de `SPORTS`) et validées daltonisme : ne jamais les réattribuer selon le filtre.
 - Le front ne lit que le contrat `fct_activities` via `GET /dashboard/data`. Pour brancher la vraie donnée : `DASHBOARD_SOURCE=bigquery` + route API `GET /bigquery-data/activities/<username>` (à implémenter dans `api/services/bigquery_service.py`).
+- Studio KPI : ajouter une mesure ou une dimension = une entrée dans `MEASURES` / `DIMS` de `studio.js` (fonction JS + expression SQL BigQuery équivalente). Les dimensions croisées sont calculées dans `enrich()` de `dashboard.js`.
 - Après modification du générateur : `python scripts/generate_mock_activities.py && pytest tests/frontend`.
 
 ## Variables d'environnement

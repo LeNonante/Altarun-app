@@ -78,11 +78,12 @@ frontend/data/mock/fct_activities.json (jeu de démo, seed fixe)  ────�
 
 | Couche | Fichier | Rôle |
 |---|---|---|
-| Données de démo | `scripts/generate_mock_activities.py` | Génère un jeu déterministe et **calibré** (course 40 km/sem. à 5'20"/km, tennis 3 h, natation 1 h, golf 2 h une semaine sur deux, escalade 1 h) avec des effets croisés réalistes |
+| Données de démo | `scripts/generate_mock_activities.py` | Génère un jeu déterministe et **calibré** (~17 h/sem. : course 65 km/sem. à 5'20"/km, tennis 7 h, natation 1 h, golf 2 h une semaine sur deux à index ~40, escalade 1 h) avec des effets croisés réalistes |
 | Contrat | `frontend/services/dashboard_data.py` | Choix de la source, validation des colonnes `fct_activities` |
 | Couche sémantique | `frontend/static/js/metrics.js` | Définitions uniques des KPI : TRIMP, CTL/ATL/TSB, ACWR, efficacité aérobie, Riegel, index golf |
 | Visualisation | `frontend/static/js/charts.js` | Mini-librairie SVG sans dépendance (barres, lignes, nuages, heatmaps, calendrier) + vue tableau accessible |
 | Page | `frontend/static/js/dashboard.js`, `templates/index.html` | Filtres, tuiles KPI, analyses croisées, export CSV |
+| Studio KPI | `frontend/static/js/studio.js` | Constructeur de KPI en glisser-déposer (mesures × dimensions, dont dimensions croisées : activité/charge de la veille, forme du jour, semaine avec golf), 6 visuels, requête BigQuery générée, épinglage sur la vue d'ensemble |
 
 **KPI notables** : charge d'entraînement TRIMP commune à tous les sports, modèle forme/fatigue/fraîcheur (Banister), ratio charge aiguë/chronique (risque de blessure), polarisation 80/20 par zones cardiaques, corrélations entre sports, effets mesurés (tennis la veille → allure du lendemain, semaine golf → sortie longue), prédictions de temps de course, index golf estimé (méthode WHS).
 

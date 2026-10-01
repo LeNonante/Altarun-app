@@ -102,6 +102,7 @@
 
                 <!-- Dashboard multi-sport : rendu côté client à partir du contrat fct_activities -->
                 <div id="dashboard" class="dashboard is-loading" data-source="{{ url_for('dashboard_data') }}">
+                    <nav id="dash-views" class="dash-views" role="tablist" aria-label="Vue"></nav>
                     <div id="dash-toolbar" class="dash-toolbar"></div>
                     <div id="dash-meta" class="dash-meta"></div>
                     <div id="dash-body"></div>
@@ -111,6 +112,7 @@
     </div>
     <script src="{{ url_for('static', filename='js/metrics.js') }}"></script>
     <script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/studio.js') }}"></script>
     <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {

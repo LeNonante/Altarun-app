@@ -7,12 +7,13 @@ Le dashboard de la page d'accueil consomme le même contrat de données que la v
 dépendre de l'ETL (ni exposer de vraies données), on génère un jeu **déterministe**
 (seed fixe) et **calibré** sur un profil d'athlète réaliste :
 
-* Course à pied : ~40 km / semaine à ~5'20"/km de moyenne, 4 sorties typées
-  (fractionné, endurance, sortie longue), progression d'allure sur l'année,
+* Course à pied : ~65 km / semaine à ~5'20"/km de moyenne, 5 sorties typées
+  (fractionné/tempo, footings, sortie longue), progression d'allure sur l'année,
   une course objectif (semi) et un 10 km.
-* Tennis : ~3 h / semaine (entraînements + matchs avec score).
+* Tennis : ~7 h / semaine, 3 à 5 séances (entraînements + matchs avec score).
 * Natation : ~1 h / semaine, bassin 25 m, SWOLF.
-* Golf : ~2 h / semaine en moyenne, mais joué environ une semaine sur deux (18 ou 9 trous).
+* Golf : ~2 h / semaine en moyenne, mais joué environ une semaine sur deux (18 ou 9 trous),
+  niveau débutant (index ~40).
 * Escalade : 1 séance d'~1 h / semaine (bloc), progression de cotation.
 
 Effets croisés volontairement injectés (pour que les KPI croisés aient du sens) :
@@ -26,6 +27,8 @@ Usage ::
 
     python scripts/generate_mock_activities.py            # écrit frontend/data/mock/fct_activities.json
     python scripts/generate_mock_activities.py --seed 7   # autre tirage, mêmes moyennes
+
+Volume total visé : ~17 h / semaine tous sports confondus.
 
 Les moyennes cibles sont recalées sur les 52 dernières semaines complètes, puis vérifiées
 (le script échoue si l'écart dépasse la tolérance).
@@ -54,10 +57,10 @@ HR_REST = 50
 WEIGHT_KG = 72
 
 # --- Cibles (moyennes sur les 52 dernières semaines complètes) --------------------------
-TARGET_RUN_KM_PER_WEEK = 40.0
+TARGET_RUN_KM_PER_WEEK = 65.0
 TARGET_RUN_PACE_S_PER_KM = 320.0  # 5'20"/km
 TARGET_HOURS_PER_WEEK = {
-    "Tennis": 3.0,
+    "Tennis": 7.0,
     "Swim": 1.0,
     "Golf": 2.0,
     "RockClimbing": 1.0,
@@ -144,8 +147,8 @@ class Generator:
     def run_week(self, monday: date, tennis_days: set[date], golf_week: bool) -> None:
         rng = self.rng
         p = self.progress(monday)
-        # Volume : saison 1 ~36 km, saison 2 ~40 km ; bruit modéré (sigma ~5 %)
-        base_km = (35.5 + 5.0 * p) * self.gauss(1, 0.05, 0.88, 1.12)
+        # Volume : saison 1 ~58 km, saison 2 ~65 km ; bruit modéré (sigma ~5 %)
+        base_km = (57.0 + 9.0 * p) * self.gauss(1, 0.05, 0.88, 1.12)
         # Base d'allure : 5'34" -> 5'08" sur deux ans (amélioration de forme)
         base_pace = 334 - 26 * p
 
@@ -168,16 +171,17 @@ class Generator:
 
         plan = [
             # (jour, type, part du volume, décalage d'allure s/km, FC moy, sd FC, heure)
-            (1, "intervals", 0.22, -24, 161, 11, (19, 5)),
-            (3, "easy", 0.20, +7, 136, 6, (7, 10)),
+            (1, "intervals", 0.17, -24, 161, 11, (19, 5)),
+            (2, "easy", 0.16, +7, 136, 6, (7, 0)),
+            (3, "easy", 0.17, +6, 135, 6, (12, 30)),
+            (5, "easy", 0.15, +7, 136, 6, (9, 0)),
             # Week-end golf => sortie longue raccourcie (effet croisé injecté)
-            (6, "long", 0.33 if golf_week else 0.40, +9, 141, 6, (9, 0)),
-            (4 if rng.random() < 0.6 else 5, "easy", 0.20, +6, 135, 6, (18, 40)),
+            (6, "long", 0.29 if golf_week else 0.35, +9, 141, 6, (9, 0)),
         ]
-        if rng.random() < 0.25:  # remplace parfois le fractionné par un tempo
-            plan[0] = (1, "tempo", 0.22, -18, 164, 5, (19, 5))
+        if rng.random() < 0.35:  # tempo au seuil le jeudi certaines semaines
+            plan[2] = (3, "tempo", 0.17, -18, 164, 5, (12, 30))
         if monday in self.vacation_weeks:
-            plan = [plan[1], plan[2]]
+            plan = [plan[1], plan[3], plan[4]]
 
         for dow, wtype, share, pace_off, hr, hr_sd, (hh, mm) in plan:
             day = week_days[dow]
@@ -259,13 +263,13 @@ class Generator:
         days: set[date] = set()
         if monday in self.vacation_weeks:
             return days
-        n = rng.choices([1, 2, 3], weights=[0.15, 0.7, 0.15])[0]
-        candidate = [0, 2, 4, 5]  # lun, mer, ven, sam
+        n = rng.choices([3, 4, 5], weights=[0.25, 0.55, 0.2])[0]
+        candidate = [0, 2, 3, 4, 5, 6]  # lun, mer, jeu, ven, sam, dim
         for dow in sorted(rng.sample(candidate, n)):
             day = monday + timedelta(days=dow)
             if day > END_DATE:
                 continue
-            minutes = self.gauss(180 / n * season_factor(monday), 15, 50, 150)
+            minutes = self.gauss(420 / n * season_factor(monday), 15, 45, 160)
             is_match = rng.random() < 0.4
             extra: dict = {"session": "match" if is_match else "entrainement"}
             if is_match:
@@ -275,7 +279,7 @@ class Generator:
             self.activities.append(
                 Activity(
                     sport_type="Tennis",
-                    start=at(day, 19 if dow < 5 else 10, 30),
+                    start=at(day, 19 if dow < 5 else 16, 30),
                     name="Match de tennis" if is_match else "Entraînement tennis",
                     workout_type="match" if is_match else "training",
                     moving_time_min=minutes,
@@ -306,7 +310,7 @@ class Generator:
         rng = self.rng
         p = self.progress(monday)
         sessions = 2 if monday in self.vacation_weeks else 1
-        dows = [rng.choice([2, 5])] if sessions == 1 else [1, 3]
+        dows = [rng.choice([2, 4])] if sessions == 1 else [1, 3]
         for dow in dows:
             if rng.random() < 0.08 and sessions == 1:
                 continue
@@ -320,7 +324,7 @@ class Generator:
             self.activities.append(
                 Activity(
                     sport_type="Swim",
-                    start=at(day, 12, 15) if dow != 5 else at(day, 8, 45),
+                    start=at(day, 12, 15),
                     name=rng.choice(
                         ["Natation endurance", "Natation technique", "Pyramide 100-400"]
                     ),
@@ -354,7 +358,8 @@ class Generator:
             return False
         holes = 18 if rng.random() < 0.8 else 9
         minutes = self.gauss(250 if holes == 18 else 125, 15)
-        score18 = self.gauss(95 - 9 * p, 3.2)
+        # Niveau débutant : ~133 coups -> ~121 sur deux ans (index ~45 -> ~40)
+        score18 = self.gauss(133 - 12 * p, 5)
         score = round(score18 if holes == 18 else score18 / 2 + self.gauss(0, 1))
         self.activities.append(
             Activity(
@@ -382,7 +387,7 @@ class Generator:
         p = self.progress(monday)
         if rng.random() < 0.08:
             return
-        day = monday + timedelta(days=rng.choice([1, 3]))
+        day = monday + timedelta(days=rng.choice([0, 3]))
         if day > END_DATE:
             return
         minutes = self.gauss(62, 7, 45, 85)
@@ -393,7 +398,7 @@ class Generator:
         self.activities.append(
             Activity(
                 sport_type="RockClimbing",
-                start=at(day, 20, 0),
+                start=at(day, 20, 30),
                 name="Séance de bloc",
                 workout_type="bouldering",
                 moving_time_min=minutes,
