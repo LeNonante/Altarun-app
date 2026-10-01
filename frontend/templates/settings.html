@@ -6,6 +6,7 @@
     <title>Altarun - Paramètres</title>
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='images/Logo.svg') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}">
 </head>
 <body>
     <div class="app-container">
@@ -235,6 +236,7 @@
                         </div>
                         <p class="card-description">Connectez votre compte Strava pour synchroniser vos activités et suivre vos statistiques.</p>
                         {% if is_strava_connected %}
+                            <p class="strava-sync" id="strava-sync" data-source="{{ url_for('dashboard_data') }}">Compte connecté</p>
                             <div class="card-actions">
 
                             <form method="POST" action="{{ url_for('settings') }}">
@@ -272,11 +274,61 @@
 
                 </div>
 
+                <!-- Profil sportif : objectifs et paramètres utilisés par le dashboard et le coach -->
+                <div class="settings-card" id="sport-profile">
+                    <div class="card-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b35" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="5"></circle><circle cx="12" cy="12" r="1"></circle>
+                        </svg>
+                        <h3>Profil sportif</h3>
+                    </div>
+                    <p class="card-description">Ton objectif de course, tes objectifs hebdomadaires et tes paramètres physiologiques. Le dashboard et le coach IA s'en servent pour les cibles, la charge d'entraînement et les séances proposées.</p>
+                    <dl class="sport-profile-summary" id="sport-profile-summary"></dl>
+                    <div class="card-actions">
+                        <button type="button" class="btn-save" id="sport-profile-edit">Modifier mon profil sportif</button>
+                    </div>
+                </div>
+
             </div>
         </main>
     </div>
 
+    <script src="{{ url_for('static', filename='js/profile.js') }}"></script>
     <script>
+        // État de synchronisation Strava (dernière synchro, nombre d'activités)
+        (function () {
+            const el = document.getElementById('strava-sync');
+            if (!el) return;
+            const show = (meta) => {
+                const d = new Date(meta.generated_at);
+                el.textContent = `Compte connecté · ${Number(meta.row_count).toLocaleString('fr-FR')} activités · dernière synchronisation le ${d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} à ${d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
+            };
+            if (window.ALTARUN_DATA) show(window.ALTARUN_DATA.meta);
+            else fetch(el.dataset.source, { credentials: 'same-origin' }).then((r) => r.json()).then((p) => show(p.meta)).catch(() => {});
+        })();
+
+        // Résumé du profil sportif + ouverture de l'éditeur
+        (function () {
+            const P = window.AltarunProfile;
+            const box = document.getElementById('sport-profile-summary');
+            if (!P || !box) return;
+            const fr = (v) => Number(v).toLocaleString('fr-FR', { maximumFractionDigits: 1 });
+            const hms = (s) => { const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = Math.round(s % 60); return (h ? h + ' h ' : '') + String(m).padStart(2, '0') + "'" + String(x).padStart(2, '0') + '"'; };
+            function render() {
+                const p = P.get();
+                const rows = [
+                    ['Objectif de course', `${p.race.name} · ${P.frDate(p.race.date)} · ${hms(p.race.targetSec)}`],
+                    ['Objectifs hebdomadaires', `Course ${fr(p.targets.Run)} km · Tennis ${fr(p.targets.Tennis)} h · Natation ${fr(p.targets.Swim)} h · Golf ${fr(p.targets.Golf)} h · Escalade ${fr(p.targets.RockClimbing)} h`],
+                    ['Fréquence cardiaque', `Max ${p.hrMax} bpm · repos ${p.hrRest} bpm`],
+                    ['Parcours de golf', `SR ${fr(p.golf.rating)} · slope ${p.golf.slope}`],
+                    ['Dernière mise à jour', P.frDate(p.updatedAt)],
+                ];
+                box.replaceChildren(...rows.flatMap(([k, v]) => { const dt = document.createElement('dt'); dt.textContent = k; const dd = document.createElement('dd'); dd.textContent = v; return [dt, dd]; }));
+            }
+            render();
+            P.onChange(render);
+            document.getElementById('sport-profile-edit').addEventListener('click', (e) => P.openEditor({ focus: 'race', returnFocus: e.currentTarget }));
+        })();
 
         // Toggle 2FA submit
         const toggle2fa = document.getElementById('2fa-toggle');

@@ -63,3 +63,11 @@
 .prof-btn.primary:hover { background: var(--color-primary-dark); }
 .prof-btn.ghost { background: transparent; border-color: var(--color-border-light); color: var(--color-text-secondary); }
 .prof-btn:focus-visible, .prof-x:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+
+/* Résumé dans Paramètres */
+.sport-profile-summary { display: grid; grid-template-columns: 200px 1fr; gap: 8px 16px; margin: 4px 0 16px; font-size: 14px; }
+.sport-profile-summary dt { color: var(--color-text-secondary); }
+.sport-profile-summary dd { margin: 0; color: var(--color-text-primary); }
+@media (max-width: 640px) { .sport-profile-summary { grid-template-columns: 1fr; gap: 2px; } .sport-profile-summary dd { margin-bottom: 8px; } }
+.strava-sync { display: flex; align-items: center; gap: 8px; margin: -4px 0 14px; color: var(--color-success-light); font-size: 13px; }
+.strava-sync::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--color-success); flex: none; }
